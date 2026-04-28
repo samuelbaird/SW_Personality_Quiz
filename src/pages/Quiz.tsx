@@ -1,9 +1,10 @@
 import { AnimatePresence, motion } from 'framer-motion'
 import { ProgressBar } from '../components/ProgressBar'
 import { QuestionCard } from '../components/QuestionCard'
+import type { QuizQuestion } from '../types/quiz'
 
 interface QuizProps {
-  questions: string[]
+  questions: QuizQuestion[]
   answers: string[]
   activeQuestion: number
   progress: number
@@ -41,7 +42,7 @@ export function Quiz({
           key={activeQuestion}
           questionNumber={activeQuestion}
           totalQuestions={questions.length}
-          question={questions[activeQuestion]}
+          question={questions[activeQuestion].text}
           answer={answers[activeQuestion]}
           onAnswerChange={(value) => onAnswerChange(activeQuestion, value)}
         />

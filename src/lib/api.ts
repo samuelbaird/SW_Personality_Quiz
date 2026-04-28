@@ -1,44 +1,66 @@
-import type { TraitScores } from '../types/quiz'
+import type { PersonalityTraits, QuizQuestion } from '../types/quiz'
+import type { AnsweredQuestion } from './analysis'
+import { analyzeTextResponses } from './analysis'
 import { normalizeTraits } from './traits'
 
-interface AnalyzeApiResponse {
-  leadership: number
-  morality: number
-  impulsiveness: number
-  independence: number
+interface AnalyzeApiSuccess {
+  traits: PersonalityTraits
 }
 
-function isAnalyzeResponse(data: unknown): data is AnalyzeApiResponse {
+function isAnalyzeApiSuccess(data: unknown): data is AnalyzeApiSuccess {
   if (!data || typeof data !== 'object') return false
-  const obj = data as Record<string, unknown>
-
-  return (
-    typeof obj.leadership === 'number' &&
-    typeof obj.morality === 'number' &&
-    typeof obj.impulsiveness === 'number' &&
-    typeof obj.independence === 'number'
-  )
+  const traits = (data as { traits?: unknown }).traits
+  return typeof traits === 'object' && traits !== null
 }
 
-export async function analyzeAnswers(answers: string[]): Promise<TraitScores> {
-  const response = await fetch('/api/analyze', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({ answers }),
-  })
+function buildAnsweredQuestions(answers: string[], questions: QuizQuestion[]): AnsweredQuestion[] {
+  return answers.map((answer, i) => ({
+    answer,
+    primaryTraits: questions[i]?.primaryTraits ?? [],
+  }))
+}
 
-  if (!response.ok) {
-    const errorBody = await response.json().catch(() => ({ error: 'Unknown API error' }))
-    throw new Error(errorBody.error ?? 'Failed to analyze answers')
+/**
+ * Analyze a list of free-text answers via the backend, falling back to the
+ * local deterministic analyzer when the API is unreachable (for example,
+ * during a plain `vite dev` session without the Vercel runtime).
+ */
+export async function analyzeAnswers(
+  answers: string[],
+  questions: QuizQuestion[],
+): Promise<PersonalityTraits> {
+  const payload = {
+    answers,
+    questions: questions.map(({ id, primaryTraits }) => ({ id, primaryTraits })),
   }
 
-  const data: unknown = await response.json()
+  try {
+    const response = await fetch('/api/analyze', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    })
 
-  if (!isAnalyzeResponse(data)) {
-    throw new Error('Received invalid trait payload from server')
+    if (!response.ok) {
+      if (response.status === 404) {
+        const pairs = buildAnsweredQuestions(answers, questions)
+        return normalizeTraits(analyzeTextResponses(pairs))
+      }
+      const body = await response.json().catch(() => ({ error: 'Unknown API error' }))
+      throw new Error(body?.error ?? 'Failed to analyze answers')
+    }
+
+    const data: unknown = await response.json()
+    if (!isAnalyzeApiSuccess(data)) {
+      throw new Error('Received invalid trait payload from server')
+    }
+
+    return normalizeTraits(data.traits)
+  } catch (error) {
+    if (error instanceof TypeError) {
+      const pairs = buildAnsweredQuestions(answers, questions)
+      return normalizeTraits(analyzeTextResponses(pairs))
+    }
+    throw error
   }
-
-  return normalizeTraits(data)
 }

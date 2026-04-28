@@ -1,10 +1,25 @@
 import { motion } from 'framer-motion'
+import { AnalysisSummary } from '../components/AnalysisSummary'
 import { ResultCard } from '../components/ResultCard'
+import { TraitBreakdown } from '../components/TraitBreakdown'
 import type { QuizResult } from '../types/quiz'
 
 interface ResultProps {
   result: QuizResult
   onTryAgain: () => void
+}
+
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: { staggerChildren: 0.12 },
+  },
+}
+
+const sectionVariants = {
+  hidden: { opacity: 0, y: 14 },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.45 } },
 }
 
 export function Result({ result, onTryAgain }: ResultProps) {
@@ -25,14 +40,27 @@ export function Result({ result, onTryAgain }: ResultProps) {
 
   return (
     <motion.section
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      transition={{ duration: 0.3 }}
+      initial="hidden"
+      animate="visible"
+      variants={containerVariants}
       className="mx-auto w-full max-w-4xl space-y-6"
     >
-      <ResultCard result={result} />
+      <motion.div variants={sectionVariants}>
+        <ResultCard result={result} />
+      </motion.div>
 
-      <div className="flex flex-wrap justify-center gap-3">
+      <motion.div variants={sectionVariants}>
+        <TraitBreakdown traits={result.traits} dominantTraits={result.dominantTraits} />
+      </motion.div>
+
+      <motion.div variants={sectionVariants}>
+        <AnalysisSummary explanation={result.explanation} />
+      </motion.div>
+
+      <motion.div
+        variants={sectionVariants}
+        className="flex flex-wrap justify-center gap-3 pt-2"
+      >
         <button
           type="button"
           onClick={onTryAgain}
@@ -49,7 +77,7 @@ export function Result({ result, onTryAgain }: ResultProps) {
         >
           Share Result
         </button>
-      </div>
+      </motion.div>
     </motion.section>
   )
 }

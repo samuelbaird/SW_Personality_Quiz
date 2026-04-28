@@ -15,8 +15,9 @@ export function Home({ onStart }: HomeProps) {
       <p className="text-xs uppercase tracking-[0.32em] text-slate-400">Star Wars AI Personality Quiz</p>
       <h1 className="mt-4 text-4xl font-semibold text-slate-100 md:text-5xl">Discover Your Galactic Archetype</h1>
       <p className="mx-auto mt-6 max-w-2xl text-sm leading-relaxed text-slate-300 md:text-base">
-        Answer five open-ended prompts. Our AI evaluates your leadership, morality, impulsiveness,
-        and independence, then maps your profile to a legendary Star Wars character.
+        Answer five open-ended prompts. The Holocron analyzes both <em>what</em> you say —
+        morality, agency, strategy, conviction — and <em>how</em> you say it — eloquence, tone,
+        confidence, formality — then maps your profile to a legendary Star Wars character.
       </p>
 
       <button
