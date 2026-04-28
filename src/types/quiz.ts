@@ -43,6 +43,41 @@ export type TraitKey = keyof PersonalityTraits
 
 export type TraitGroup = 'cognitive' | 'expression'
 
+/** Scoring-layer taxonomy used for weight normalization and explanation grouping. */
+export type TraitCategory = 'core' | 'structural' | 'expression'
+
+/** Per-trait breakdown of how much each comparison contributed to the final score. */
+export interface TraitContribution {
+  trait: TraitKey
+  userValue: number
+  targetValue: number
+  /** Effective weight after category-cap normalization. */
+  weight: number
+  /** Raw squared (or absolute) distance between user and target values. */
+  distance: number
+  /** Weighted distance impact: distance × weight. */
+  contribution: number
+  category: TraitCategory
+}
+
+/**
+ * Structured result of scoring one character against the user's traits.
+ * Carries all data needed to render explanations without re-running the math.
+ */
+export interface CharacterScore {
+  characterId: string
+  finalScore: number
+  contributions: TraitContribution[]
+  /** Fraction of trait-space covered by this character's profile (0..1). */
+  coverage: number
+  /** Synonym for coverage; used by explanation layer as a quality signal. */
+  confidence: number
+  /** Normalized alignment bonus added to finalScore. */
+  bonus: number
+  /** Traits where both user and target exceeded the strong-alignment threshold. */
+  strongMatches: TraitKey[]
+}
+
 export interface TraitDescriptor {
   key: TraitKey
   label: string

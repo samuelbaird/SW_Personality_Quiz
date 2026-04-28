@@ -328,7 +328,7 @@ export const CHARACTER_ROSTER: readonly CharacterProfile[] = [
     name: 'K-2SO',
     signature: 'Blunt Realist',
     description:
-      'Unfiltered and outcome-focused, you say what others won't — not out of cruelty but because the truth matters more than comfort.',
+      "Unfiltered and outcome-focused, you say what others won't — not out of cruelty but because the truth matters more than comfort.",
     traits: {
       morality: 0.8,
       agency: 0.8,

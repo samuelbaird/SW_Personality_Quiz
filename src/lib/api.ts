@@ -5,6 +5,7 @@ import { normalizeTraits } from './traits'
 
 interface AnalyzeApiSuccess {
   traits: PersonalityTraits
+  explanation?: string
 }
 
 function isAnalyzeApiSuccess(data: unknown): data is AnalyzeApiSuccess {
