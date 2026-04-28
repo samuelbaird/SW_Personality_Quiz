@@ -7,6 +7,7 @@ import type { QuizResult } from '../types/quiz'
 interface ResultProps {
   result: QuizResult
   onTryAgain: () => void
+  onRegenerateExplanation: () => void
 }
 
 const containerVariants = {
@@ -22,7 +23,7 @@ const sectionVariants = {
   visible: { opacity: 1, y: 0, transition: { duration: 0.45 } },
 }
 
-export function Result({ result, onTryAgain }: ResultProps) {
+export function Result({ result, onTryAgain, onRegenerateExplanation }: ResultProps) {
   async function handleShare() {
     const text = `I got ${result.character.name} on the Star Wars AI Personality Quiz!`
     const shareData = {
@@ -54,7 +55,7 @@ export function Result({ result, onTryAgain }: ResultProps) {
       </motion.div>
 
       <motion.div variants={sectionVariants}>
-        <AnalysisSummary explanation={result.explanation} />
+        <AnalysisSummary explanation={result.explanation} source={result.explanationSource} />
       </motion.div>
 
       <motion.div
@@ -67,6 +68,14 @@ export function Result({ result, onTryAgain }: ResultProps) {
           className="rounded-lg border border-slate-600 px-5 py-2 text-sm text-slate-200 transition hover:border-slate-400"
         >
           Try Again
+        </button>
+        <button
+          type="button"
+          onClick={onRegenerateExplanation}
+          disabled={result.explanationSource === 'pending'}
+          className="rounded-lg border border-cyan-500/50 px-5 py-2 text-sm text-cyan-200 transition hover:border-cyan-300 disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          Regenerate Reading
         </button>
         <button
           type="button"

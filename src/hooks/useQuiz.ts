@@ -1,7 +1,8 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { analyzeAnswers } from '../lib/api'
-import { mapTraitsToCharacter } from '../lib/characterMapping'
-import { generateExplanation } from '../lib/explanation'
+import { mapTraitsToCharacterDetailed } from '../lib/characterMapping'
+import { fetchExplanation } from '../lib/explainApi'
+import { buildExplainPayload } from '../lib/explainPayload'
 import { buildSessionQuestions } from '../lib/questions'
 import { pickDominantTraits } from '../lib/traits'
 import type { QuizQuestion, QuizResult } from '../types/quiz'
@@ -17,6 +18,7 @@ export function useQuiz() {
   const [activeQuestion, setActiveQuestion] = useState(0)
   const [result, setResult] = useState<QuizResult | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const explanationRequestId = useRef(0)
 
   const progress = (activeQuestion / questions.length) * 100
 
@@ -58,17 +60,36 @@ export function useQuiz() {
 
     try {
       const traits = await analyzeAnswers(answers, questions)
-      const match = mapTraitsToCharacter(traits)
+      const match = mapTraitsToCharacterDetailed(traits)
+      const requestId = explanationRequestId.current + 1
+      explanationRequestId.current = requestId
 
       setResult({
         traits,
         character: match.profile,
         matchScore: match.similarity,
         alignmentScore: traits.morality,
-        explanation: generateExplanation(traits),
+        explanation: '',
+        explanationSource: 'pending',
         dominantTraits: pickDominantTraits(traits, 3),
       })
       setScreen('result')
+
+      const payload = buildExplainPayload(traits, match.profile, match.score)
+      void fetchExplanation(payload).then((explainResult) => {
+        if (explanationRequestId.current !== requestId) {
+          return
+        }
+
+        setResult((current) => {
+          if (!current) return current
+          return {
+            ...current,
+            explanation: explainResult.explanation,
+            explanationSource: explainResult.source,
+          }
+        })
+      })
     } catch (submitError) {
       const message = submitError instanceof Error ? submitError.message : 'Unexpected error'
       setError(message)
@@ -76,7 +97,40 @@ export function useQuiz() {
     }
   }
 
+  function regenerateExplanation() {
+    if (!result) return
+
+    const requestId = explanationRequestId.current + 1
+    explanationRequestId.current = requestId
+    const match = mapTraitsToCharacterDetailed(result.traits)
+    const payload = buildExplainPayload(result.traits, match.profile, match.score)
+
+    setResult((current) => {
+      if (!current) return current
+      return {
+        ...current,
+        explanationSource: 'pending',
+      }
+    })
+
+    void fetchExplanation(payload, { noCache: true }).then((explainResult) => {
+      if (explanationRequestId.current !== requestId) {
+        return
+      }
+
+      setResult((current) => {
+        if (!current) return current
+        return {
+          ...current,
+          explanation: explainResult.explanation,
+          explanationSource: explainResult.source,
+        }
+      })
+    })
+  }
+
   function tryAgain() {
+    explanationRequestId.current += 1
     setAnswers(Array.from({ length: questions.length }, () => ''))
     setResult(null)
     setActiveQuestion(0)
@@ -98,6 +152,7 @@ export function useQuiz() {
     goNext,
     goBack,
     submitQuiz,
+    regenerateExplanation,
     tryAgain,
   }
 }

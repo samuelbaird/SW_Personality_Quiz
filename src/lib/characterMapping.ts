@@ -1,5 +1,5 @@
-import type { CharacterMatch, CharacterProfile, PersonalityTraits, TraitKey } from '../types/quiz'
-import { pickBestCharacter } from './similarity'
+import type { CharacterMatch, CharacterProfile, CharacterScore, PersonalityTraits, TraitKey } from '../types/quiz'
+import { pickBestCharacter, pickBestCharacterDetailed } from './similarity'
 
 /**
  * Full character roster, organized by alignment archetype.
@@ -388,4 +388,10 @@ const DEFAULT_WEIGHTS: Partial<Record<TraitKey, number>> = {
  */
 export function mapTraitsToCharacter(traits: PersonalityTraits): CharacterMatch {
   return pickBestCharacter(traits, CHARACTER_ROSTER, DEFAULT_WEIGHTS)
+}
+
+export function mapTraitsToCharacterDetailed(
+  traits: PersonalityTraits,
+): CharacterMatch & { score: CharacterScore } {
+  return pickBestCharacterDetailed(traits, CHARACTER_ROSTER, DEFAULT_WEIGHTS)
 }

@@ -1,0 +1,72 @@
+[
+  {
+    "name": "Principled Initiator",
+    "payload": {
+      "version": 1,
+      "locale": "en",
+      "character": { "id": "luke_skywalker", "name": "Luke Skywalker", "signature": "Hopeful Rebel" },
+      "traits": {
+        "morality": 0.9,
+        "agency": 0.85,
+        "powerOrientation": 0.35,
+        "emotionalRegulation": 0.5,
+        "socialOrientation": 0.7,
+        "strategicThinking": 0.45,
+        "conviction": 0.68,
+        "riskTolerance": 0.82,
+        "eloquence": 0.6,
+        "emotionalTone": 0.72,
+        "confidence": 0.77,
+        "complexity": 0.55,
+        "narrativeStyle": 0.61,
+        "formality": 0.46,
+        "verbalDominance": 0.58
+      },
+      "aligned": [
+        { "trait": "morality", "label": "Morality", "value": 0.9, "pole": "high", "poleLabel": "Light" },
+        { "trait": "agency", "label": "Agency", "value": 0.85, "pole": "high", "poleLabel": "Proactive" },
+        { "trait": "riskTolerance", "label": "Risk Tolerance", "value": 0.82, "pole": "high", "poleLabel": "Bold" }
+      ],
+      "divergent": [
+        { "trait": "strategicThinking", "label": "Strategic Thinking", "value": 0.45, "pole": "neutral", "poleLabel": "balanced" },
+        { "trait": "emotionalRegulation", "label": "Emotional Regulation", "value": 0.5, "pole": "neutral", "poleLabel": "balanced" }
+      ],
+      "strongMatches": ["morality", "riskTolerance"]
+    }
+  },
+  {
+    "name": "Controlled Strategist",
+    "payload": {
+      "version": 1,
+      "locale": "en",
+      "character": { "id": "thrawn", "name": "Grand Admiral Thrawn", "signature": "Analytical Strategist" },
+      "traits": {
+        "morality": 0.25,
+        "agency": 0.82,
+        "powerOrientation": 0.74,
+        "emotionalRegulation": 0.92,
+        "socialOrientation": 0.32,
+        "strategicThinking": 0.95,
+        "conviction": 0.8,
+        "riskTolerance": 0.58,
+        "eloquence": 0.79,
+        "emotionalTone": 0.22,
+        "confidence": 0.88,
+        "complexity": 0.85,
+        "narrativeStyle": 0.47,
+        "formality": 0.82,
+        "verbalDominance": 0.76
+      },
+      "aligned": [
+        { "trait": "strategicThinking", "label": "Strategic Thinking", "value": 0.95, "pole": "high", "poleLabel": "Long-term" },
+        { "trait": "emotionalRegulation", "label": "Emotional Regulation", "value": 0.92, "pole": "high", "poleLabel": "Controlled" },
+        { "trait": "complexity", "label": "Complexity", "value": 0.85, "pole": "high", "poleLabel": "Nuanced" }
+      ],
+      "divergent": [
+        { "trait": "morality", "label": "Morality", "value": 0.25, "pole": "low", "poleLabel": "Dark" },
+        { "trait": "socialOrientation", "label": "Social Orientation", "value": 0.32, "pole": "low", "poleLabel": "Individual" }
+      ],
+      "strongMatches": ["strategicThinking", "emotionalRegulation"]
+    }
+  }
+]

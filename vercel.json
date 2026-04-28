@@ -2,6 +2,9 @@
   "functions": {
     "api/analyze.ts": {
       "maxDuration": 15
+    },
+    "api/explain.ts": {
+      "maxDuration": 10
     }
   }
 }

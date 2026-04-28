@@ -1,13 +1,13 @@
 # Star Wars AI Personality Quiz
 
-A React quiz that turns free-text answers into trait scores, matches you to a Star Wars character, and shows an animated results screen. Trait inference can use **Google Gemini** on the server (structured JSON) or fall back to a **deterministic, local text analyzer** so the app still works without the API.
+A React quiz that turns free-text answers into trait scores, matches you to a Star Wars character, and shows an animated results screen. Trait inference can use **Google Gemini** on the server (structured JSON) or fall back to a **deterministic, local text analyzer** so the app still works without the API. A separate explanation endpoint can generate a grounded "Holocron Reading" from structured trait data.
 
 ## Stack
 
 - **React 19** + **Vite 8** + **TypeScript**
 - **Tailwind CSS 4** (Vite plugin)
 - **Framer Motion** for transitions
-- **Vercel serverless** — `api/analyze.ts` (15s max duration in `vercel.json`)
+- **Vercel serverless** — `api/analyze.ts` + `api/explain.ts`
 - **Gemini 2.5 Flash** (`gemini-2.5-flash`) when `GEMINI_API_KEY` is set
 
 ## Quick start
@@ -24,7 +24,7 @@ npm install
 cp .env.example .env
 ```
 
-3. Set `GEMINI_API_KEY` in `.env` for AI-powered analysis on deployed or `vercel dev` environments. `VITE_GEMINI_API_KEY` is reserved for parity; the browser does **not** call Gemini for analysis (only the serverless route does).
+3. Set `GEMINI_API_KEY` in `.env` for AI-powered analysis/explanations on deployed or `vercel dev` environments. `VITE_GEMINI_API_KEY` is reserved for parity; the browser does **not** call Gemini directly.
 
 4. Run the dev server:
 
@@ -45,6 +45,7 @@ npx vercel dev
 | `npm run build`  | Typecheck + production Vite build |
 | `npm run preview`| Serve the production build        |
 | `npm run lint`   | ESLint                            |
+| `npm run dry-run:explain` | Runs explain fixtures against `/api/explain` (with `vercel dev`) |
 
 ## How it works
 
@@ -52,7 +53,8 @@ npx vercel dev
 2. **Submit** — Answers must be at least **12 characters** per question. The client POSTs to `/api/analyze` with `answers` and optional per-question metadata (`id`, `primaryTraits`) so the backend can weight answers by which traits each question targets.
 3. **Analysis** — With a valid API key, the server asks Gemini for structured trait JSON, validates it, and returns normalized scores. Otherwise (or on Gemini/validation failure), the server uses `analyzeTextResponses`: keyword- and style-based heuristics with **no randomness** for identical inputs.
 4. **Matching** — `mapTraitsToCharacter` scores the user against a roster of **Star Wars profiles** using a weighted similarity layer (`similarity.ts`); partial character profiles only compare traits that are defined.
-5. **UI** — Home → quiz → loading → result with character card, trait breakdown, optional analysis copy, **Try again** (resets to home), and **Share** (Web Share API or clipboard fallback).
+5. **UI** — Home → quiz → loading → result with character card, trait breakdown, and explanation card. The result renders immediately, then requests `/api/explain` in parallel; a skeleton is shown until the explanation arrives (or deterministic fallback is used).
+6. **Explanation** — `/api/explain` receives only structured fields (traits + aligned/divergent signals + matched character), calls Gemini for prose, and applies tiered caching (in-memory + KV when configured). Raw answers are not sent.
 
 Personality traits are a **two-layer model** (cognitive vs. expression), all normalized to **0..1**. See `src/types/quiz.ts` for the full trait list and related types.
 
@@ -67,7 +69,8 @@ src/
   types/          # quiz and result types
 api/
   analyze.ts      # POST handler: Gemini → validate, or deterministic traits
-  _lib/           # gemini client, prompt + JSON schema, response validation
+  explain.ts      # POST handler: Gemini explanation with fallback + cache
+  _lib/           # gemini client, prompt/schema, response validation, cache
 ```
 
 ## Notes
@@ -75,3 +78,4 @@ api/
 - Error handling and validation are included on both client and API.
 - UI is dark-themed, responsive, and uses a full-page background asset under `public/`.
 - For production deployment, configure `GEMINI_API_KEY` in the Vercel project environment; the frontend build does not embed that secret.
+- Optional controls for explanation route: `EXPLAIN_DISABLED`, `GEMINI_EXPLAIN_MODEL`, `EXPLAIN_RATE_LIMIT_PER_MINUTE`, and KV credentials (`KV_REST_API_URL`, `KV_REST_API_TOKEN`).

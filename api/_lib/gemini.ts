@@ -12,6 +12,13 @@ export interface CallGeminiArgs {
   responseSchema: object
   apiKey: string
   timeoutMs?: number
+  model?: string
+  generationConfig?: {
+    temperature?: number
+    topP?: number
+    topK?: number
+    maxOutputTokens?: number
+  }
 }
 
 type GeminiSuccess = { ok: true; raw: string }
@@ -58,9 +65,17 @@ export async function callGemini(args: CallGeminiArgs): Promise<GeminiSuccess | 
   const controller = new AbortController()
   const timeout = setTimeout(() => controller.abort(), args.timeoutMs ?? DEFAULT_TIMEOUT_MS)
 
+  const model = args.model ?? GEMINI_MODEL
+  const generationConfig = {
+    temperature: args.generationConfig?.temperature ?? 0,
+    topP: args.generationConfig?.topP ?? 0,
+    topK: args.generationConfig?.topK ?? 1,
+    maxOutputTokens: args.generationConfig?.maxOutputTokens ?? 1024,
+  }
+
   try {
     const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${args.apiKey}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${args.apiKey}`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -76,10 +91,10 @@ export async function callGemini(args: CallGeminiArgs): Promise<GeminiSuccess | 
             },
           ],
           generationConfig: {
-            temperature: 0,
-            topP: 0,
-            topK: 1,
-            maxOutputTokens: 1024,
+            temperature: generationConfig.temperature,
+            topP: generationConfig.topP,
+            topK: generationConfig.topK,
+            maxOutputTokens: generationConfig.maxOutputTokens,
             responseMimeType: 'application/json',
             responseSchema: args.responseSchema,
           },

@@ -101,6 +101,8 @@ export interface CharacterMatch {
   similarity: number
 }
 
+export type ExplanationSource = 'pending' | 'gemini' | 'cache' | 'fallback'
+
 export interface QuizResult {
   traits: PersonalityTraits
   character: CharacterProfile
@@ -110,6 +112,8 @@ export interface QuizResult {
   alignmentScore: number
   /** Deterministic, human-readable summary of the trait profile. */
   explanation: string
+  /** Indicates how the explanation was produced. */
+  explanationSource: ExplanationSource
   /** Top dominant traits (highest values) for highlight tiles. */
   dominantTraits: TraitKey[]
 }

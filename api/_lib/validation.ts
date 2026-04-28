@@ -6,6 +6,10 @@ interface GeminiPayload {
   explanation?: unknown
 }
 
+interface ExplanationPayload {
+  explanation?: unknown
+}
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
@@ -20,6 +24,33 @@ function stripCodeFences(raw: string): string {
     .replace(/^```(?:json)?\s*/i, '')
     .replace(/\s*```$/, '')
     .trim()
+}
+
+export function safeParseExplanationResponse(raw: string): { explanation: string } | null {
+  const cleaned = stripCodeFences(raw)
+
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(cleaned)
+  } catch {
+    return null
+  }
+
+  if (!isRecord(parsed)) {
+    return null
+  }
+
+  const payload = parsed as ExplanationPayload
+  if (typeof payload.explanation !== 'string') {
+    return null
+  }
+
+  const explanation = payload.explanation.trim().slice(0, 600)
+  if (!explanation) {
+    return null
+  }
+
+  return { explanation }
 }
 
 function countMissingTraits(value: unknown): number {

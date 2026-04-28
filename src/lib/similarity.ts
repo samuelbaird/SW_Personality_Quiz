@@ -296,6 +296,15 @@ export function pickBestCharacter(
   roster: readonly CharacterProfile[],
   weights: Partial<Record<TraitKey, number>> = {},
 ): { profile: CharacterProfile; similarity: number } {
+  const detailed = pickBestCharacterDetailed(user, roster, weights)
+  return { profile: detailed.profile, similarity: detailed.similarity }
+}
+
+export function pickBestCharacterDetailed(
+  user: PersonalityTraits,
+  roster: readonly CharacterProfile[],
+  weights: Partial<Record<TraitKey, number>> = {},
+): { profile: CharacterProfile; similarity: number; score: CharacterScore } {
   if (roster.length === 0) {
     throw new Error('Cannot pick a character from an empty roster')
   }
@@ -312,5 +321,5 @@ export function pickBestCharacter(
     }
   }
 
-  return { profile: bestProfile, similarity: bestScore.finalScore }
+  return { profile: bestProfile, similarity: bestScore.finalScore, score: bestScore }
 }

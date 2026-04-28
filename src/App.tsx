@@ -19,6 +19,7 @@ function App() {
     goNext,
     goBack,
     submitQuiz,
+    regenerateExplanation,
     tryAgain,
   } = useQuiz()
 
@@ -61,7 +62,14 @@ function App() {
 
         {screen === 'loading' ? <LoadingScreen key="loading" /> : null}
 
-        {screen === 'result' && result ? <Result key="result" result={result} onTryAgain={tryAgain} /> : null}
+        {screen === 'result' && result ? (
+          <Result
+            key="result"
+            result={result}
+            onTryAgain={tryAgain}
+            onRegenerateExplanation={regenerateExplanation}
+          />
+        ) : null}
         </AnimatePresence>
       </div>
     </main>
