@@ -9,15 +9,15 @@ const FIXED_QUESTIONS: QuizQuestion[] = [
     fixed: true,
   },
   {
-    id: 'risk',
-    text: "Tell me about a time you had to make a decision without having all the information you wanted.",
-    primaryTraits: ['riskTolerance', 'conviction', 'emotionalRegulation', 'complexity'],
+    id: 'power',
+    text: "When working with others, how do you typically influence outcomes or decisions?",
+    primaryTraits: ['powerOrientation', 'authorityOrientation', 'authorityRigidity', 'socialOrientation', 'strategicThinking'],
     fixed: true,
   },
   {
-    id: 'communication',
-    text: "Explain something you understand well to someone who has no background in it.",
-    primaryTraits: ['eloquence', 'complexity', 'narrativeStyle', 'formality'],
+    id: 'moral_ambiguity',
+    text: "Have you ever justified a questionable decision because it led to a better outcome? Walk me through it.",
+    primaryTraits: ['morality', 'evaluationBasis', 'authorityRigidity', 'conviction'],
     fixed: true,
   },
 ]
@@ -28,9 +28,15 @@ const FIXED_QUESTIONS: QuizQuestion[] = [
  */
 const ROTATING_QUESTIONS: QuizQuestion[] = [
   {
-    id: 'power',
-    text: "When working with others, how do you typically influence outcomes or decisions?",
-    primaryTraits: ['powerOrientation', 'verbalDominance', 'socialOrientation', 'strategicThinking'],
+    id: 'risk',
+    text: "Tell me about a time you had to make a decision without having all the information you wanted.",
+    primaryTraits: ['riskTolerance', 'conviction', 'emotionalRegulation', 'complexity'],
+    fixed: false,
+  },
+  {
+    id: 'communication',
+    text: "Explain something you understand well to someone who has no background in it.",
+    primaryTraits: ['eloquence', 'complexity', 'narrativeStyle', 'formality'],
     fixed: false,
   },
   {
@@ -49,12 +55,6 @@ const ROTATING_QUESTIONS: QuizQuestion[] = [
     id: 'independence',
     text: "When you're tackling a difficult problem, how do you decide whether to rely on others or handle it yourself?",
     primaryTraits: ['socialOrientation', 'agency', 'confidence'],
-    fixed: false,
-  },
-  {
-    id: 'moral_ambiguity',
-    text: "Have you ever justified a questionable decision because it led to a better outcome? Walk me through it.",
-    primaryTraits: ['morality', 'conviction', 'complexity'],
     fixed: false,
   },
   {

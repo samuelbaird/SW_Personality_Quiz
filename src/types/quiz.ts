@@ -29,6 +29,14 @@ export interface PersonalityTraits {
   strategicThinking: number
   conviction: number
   riskTolerance: number
+  /** 0.0 = diplomatic/consensus-driven; 1.0 = directive/command-driven */
+  authorityOrientation: number
+  /** 0.0 = adaptive/flexible authority; 1.0 = strict/doctrinal enforcement */
+  authorityRigidity: number
+  /** 0.0 = outcome-based judgment; 1.0 = process-based judgment */
+  evaluationBasis: number
+  /** 0.0 = low competence sensitivity (loyalty dominates); 1.0 = high competence sensitivity */
+  competenceSensitivity: number
 
   eloquence: number
   emotionalTone: number

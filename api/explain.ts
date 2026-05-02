@@ -1,6 +1,8 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { getExplainCache, setExplainCache, checkRateLimit } from './_lib/cache'
+import { geminiDebugAllowed } from './_lib/debugGemini'
 import { getExplainerProvider } from './_lib/explainer'
+import { getJsonBody } from './_lib/parseJsonBody'
 import type { ExplainRequestPayload, ExplainTraitSignal } from '../src/lib/explainPayload'
 import { EXPLAIN_PAYLOAD_VERSION, quantizeTraitValue } from '../src/lib/explainPayload'
 import { TRAIT_KEYS } from '../src/lib/traits'
@@ -10,6 +12,7 @@ interface ExplainResponseBody {
   explanation: string
   source: 'gemini' | 'cache' | 'fallback'
   version: number
+  _geminiDebug?: { route: 'explain'; raw: string }
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -43,6 +46,14 @@ function isExplainRequestBody(value: unknown): value is ExplainRequestPayload {
     if (typeof value.traits[key] !== 'number') return false
   }
 
+  if (
+    'debugGemini' in value &&
+    value.debugGemini !== undefined &&
+    typeof value.debugGemini !== 'boolean'
+  ) {
+    return false
+  }
+
   return true
 }
 
@@ -58,7 +69,7 @@ function readIp(req: VercelRequest): string {
   if (typeof header === 'string' && header.length > 0) {
     return header.split(',')[0].trim()
   }
-  return req.socket.remoteAddress ?? 'unknown'
+  return req.socket?.remoteAddress ?? 'unknown'
 }
 
 function fallback(version: number): ExplainResponseBody {
@@ -86,10 +97,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
     }
 
-    const payload = req.body as unknown
+    const payload = getJsonBody(req)
     if (!isExplainRequestBody(payload)) {
       return res.status(400).json({ error: 'Invalid payload for /api/explain' })
     }
+
+    const wantGeminiDebug = geminiDebugAllowed() && payload.debugGemini === true
 
     const cacheKey = buildCacheKey(payload)
     if (!noCache) {
@@ -109,7 +122,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const generated = await provider.generate(payload)
     if (!generated.ok) {
       console.warn('[explain] provider failed', { reason: generated.reason, latencyMs: Date.now() - startedAt })
-      return res.status(200).json(fallback(payload.version))
+      return res.status(200).json({
+        ...fallback(payload.version),
+        ...(wantGeminiDebug && generated.geminiRaw
+          ? { _geminiDebug: { route: 'explain' as const, raw: generated.geminiRaw } }
+          : {}),
+      })
     }
 
     const explanation = generated.explanation.slice(0, 600)
@@ -122,6 +140,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       explanation,
       source: 'gemini',
       version: payload.version,
+      ...(wantGeminiDebug && generated.geminiRaw
+        ? { _geminiDebug: { route: 'explain' as const, raw: generated.geminiRaw } }
+        : {}),
     } satisfies ExplainResponseBody)
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown server error'

@@ -2,7 +2,9 @@ import type { VercelRequest, VercelResponse } from '@vercel/node'
 import type { AnsweredQuestion } from '../src/lib/analysis'
 import { analyzeTextResponses } from '../src/lib/analysis'
 import { normalizeTraits } from '../src/lib/traits'
+import { geminiDebugAllowed } from './_lib/debugGemini'
 import { callGemini } from './_lib/gemini'
+import { getJsonBody } from './_lib/parseJsonBody'
 import { RESPONSE_SCHEMA, SYSTEM_INSTRUCTION, buildUserPrompt } from './_lib/prompt'
 import { safeParseGeminiResponse } from './_lib/validation'
 
@@ -14,6 +16,7 @@ interface QuestionMeta {
 interface AnalyzeBody {
   answers?: unknown
   questions?: unknown
+  debugGemini?: unknown
 }
 
 function isQuestionMetaList(value: unknown): value is QuestionMeta[] {
@@ -52,7 +55,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    const body = req.body as AnalyzeBody
+    const body = getJsonBody(req) as AnalyzeBody
     const answers = body?.answers
     const questionsMeta = body?.questions
 
@@ -67,21 +70,37 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const validMeta = isQuestionMetaList(questionsMeta) ? questionsMeta : null
 
+    const wantGeminiDebug =
+      geminiDebugAllowed() && (body as AnalyzeBody).debugGemini === true
+
+    let analyzeFallbackRaw: string | undefined
     const apiKey = process.env.GEMINI_API_KEY
     if (apiKey) {
       const geminiResult = await callGemini({
         apiKey,
         responseSchema: RESPONSE_SCHEMA,
         systemInstruction: SYSTEM_INSTRUCTION,
-        userPrompt: buildUserPrompt(trimmed, validMeta),
+        userPrompt: buildUserPrompt(trimmed, validMeta ?? undefined),
       })
 
       if (geminiResult.ok) {
         const parsed = safeParseGeminiResponse(geminiResult.raw)
         if (parsed) {
-          return res.status(200).json(parsed)
+          if (parsed.missingTraitKeys.length > 0) {
+            console.warn('[analyze] Gemini omitted traits (defaulted to 0.5)', parsed.missingTraitKeys)
+          }
+          return res.status(200).json({
+            traits: parsed.traits,
+            explanation: parsed.explanation,
+            ...(wantGeminiDebug
+              ? { _geminiDebug: { route: 'analyze' as const, raw: geminiResult.raw } }
+              : {}),
+          })
         }
-        console.warn('[analyze] Gemini response failed validation; falling back')
+        console.warn('[analyze] Gemini response failed validation (fewer than half the traits returned); falling back')
+        if (wantGeminiDebug) {
+          analyzeFallbackRaw = geminiResult.raw
+        }
       } else {
         console.warn('[analyze] Gemini call failed; falling back', {
           reason: geminiResult.reason,
@@ -92,7 +111,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const answeredQuestions = buildAnsweredQuestions(trimmed, validMeta)
     const traits = normalizeTraits(analyzeTextResponses(answeredQuestions))
-    return res.status(200).json({ traits, explanation: '' })
+    return res.status(200).json({
+      traits,
+      explanation: '',
+      ...(wantGeminiDebug && analyzeFallbackRaw
+        ? { _geminiDebug: { route: 'analyze' as const, raw: analyzeFallbackRaw } }
+        : {}),
+    })
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown server error'
     return res.status(500).json({ error: message })

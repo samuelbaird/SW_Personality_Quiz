@@ -1,4 +1,5 @@
 import type { ExplainRequestPayload } from '../../../src/lib/explainPayload'
+import { geminiDebugAllowed } from '../debugGemini'
 import { callGemini } from '../gemini'
 import {
   EXPLAIN_RESPONSE_SCHEMA,
@@ -7,8 +8,12 @@ import {
 } from '../explainPrompt'
 import { safeParseExplanationResponse } from '../validation'
 
+export type ExplainerGenerateResult =
+  | { ok: true; explanation: string; geminiRaw?: string }
+  | { ok: false; reason: string; geminiRaw?: string }
+
 export interface ExplainerProvider {
-  generate(payload: ExplainRequestPayload): Promise<{ ok: true; explanation: string } | { ok: false; reason: string }>
+  generate(payload: ExplainRequestPayload): Promise<ExplainerGenerateResult>
 }
 
 function getExplainModel(): string {
@@ -17,11 +22,12 @@ function getExplainModel(): string {
 
 export const geminiExplainer: ExplainerProvider = {
   async generate(payload) {
+    const wantRaw = geminiDebugAllowed() && payload.debugGemini === true
     const apiKey = process.env.GEMINI_API_KEY
     const result = await callGemini({
       apiKey: apiKey ?? '',
       model: getExplainModel(),
-      timeoutMs: 1200,
+      timeoutMs: 5000,
       systemInstruction: EXPLAIN_SYSTEM_INSTRUCTION,
       userPrompt: buildExplainUserPrompt(payload),
       responseSchema: EXPLAIN_RESPONSE_SCHEMA,
@@ -29,20 +35,30 @@ export const geminiExplainer: ExplainerProvider = {
         temperature: 0.3,
         topP: 0.9,
         topK: 40,
-        maxOutputTokens: 180,
+        maxOutputTokens: 512,
       },
     })
 
     if (!result.ok) {
+      console.warn('[explain] Gemini call failed', { reason: result.reason })
       return { ok: false, reason: result.reason }
     }
 
     const parsed = safeParseExplanationResponse(result.raw)
     if (!parsed) {
-      return { ok: false, reason: 'invalid_payload' }
+      console.warn('[explain] Gemini response failed validation')
+      return {
+        ok: false,
+        reason: 'invalid_payload',
+        geminiRaw: wantRaw ? result.raw : undefined,
+      }
     }
 
-    return { ok: true, explanation: parsed.explanation }
+    return {
+      ok: true,
+      explanation: parsed.explanation,
+      geminiRaw: wantRaw ? result.raw : undefined,
+    }
   },
 }
 

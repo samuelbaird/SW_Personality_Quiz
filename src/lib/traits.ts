@@ -39,6 +39,10 @@ const TRAIT_DESCRIPTORS: TraitDescriptor[] = [
   { key: 'strategicThinking', label: 'Strategic Thinking', group: 'cognitive', poles: { low: 'Tactical', high: 'Long-term' } },
   { key: 'conviction', label: 'Conviction', group: 'cognitive', poles: { low: 'Flexible', high: 'Dogmatic' } },
   { key: 'riskTolerance', label: 'Risk Tolerance', group: 'cognitive', poles: { low: 'Cautious', high: 'Bold' } },
+  { key: 'authorityOrientation', label: 'Authority Orientation', group: 'cognitive', poles: { low: 'Diplomatic', high: 'Directive' } },
+  { key: 'authorityRigidity', label: 'Authority Rigidity', group: 'cognitive', poles: { low: 'Adaptive', high: 'Doctrinal' } },
+  { key: 'evaluationBasis', label: 'Evaluation Basis', group: 'cognitive', poles: { low: 'Outcome-based', high: 'Process-based' } },
+  { key: 'competenceSensitivity', label: 'Competence Sensitivity', group: 'cognitive', poles: { low: 'Loyalty/Outcome', high: 'Competence-driven' } },
 
   { key: 'eloquence', label: 'Eloquence', group: 'expression', poles: { low: 'Simple', high: 'Articulate' } },
   { key: 'emotionalTone', label: 'Emotional Tone', group: 'expression', poles: { low: 'Cold', high: 'Warm' } },

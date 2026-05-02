@@ -1,4 +1,5 @@
 import { generateExplanation } from './explanation'
+import { clientWantsGeminiDebugLogs } from './debugGeminiClient'
 import type { ExplainRequestPayload } from './explainPayload'
 import type { ExplanationSource } from '../types/quiz'
 
@@ -12,6 +13,7 @@ interface ExplainServerSuccess {
   explanation?: unknown
   source?: unknown
   version?: unknown
+  _geminiDebug?: { route: 'explain'; raw: string }
 }
 
 function isExplainServerSuccess(value: unknown): value is ExplainServerSuccess {
@@ -30,7 +32,7 @@ export async function fetchExplanation(
   payload: ExplainRequestPayload,
   options: { timeoutMs?: number; noCache?: boolean } = {},
 ): Promise<ExplainApiResponse> {
-  const timeoutMs = options.timeoutMs ?? 1500
+  const timeoutMs = options.timeoutMs ?? 8000
   const controller = new AbortController()
   const timeout = setTimeout(() => controller.abort(), timeoutMs)
 
@@ -44,6 +46,10 @@ export async function fetchExplanation(
     })
 
     if (!response.ok) {
+      if (import.meta.env.DEV) {
+        const detail = await response.clone().text()
+        console.warn('[explain] /api/explain HTTP', response.status, detail.slice(0, 1200))
+      }
       return fallbackResponse(payload)
     }
 
@@ -61,6 +67,10 @@ export async function fetchExplanation(
       data.source === 'gemini' || data.source === 'cache' || data.source === 'fallback'
         ? data.source
         : 'fallback'
+
+    if (clientWantsGeminiDebugLogs && data._geminiDebug?.raw !== undefined) {
+      console.info('[Gemini raw] POST /api/explain', data._geminiDebug.raw)
+    }
 
     return {
       explanation: explanation.slice(0, 600),

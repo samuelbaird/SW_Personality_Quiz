@@ -19,16 +19,25 @@ export interface CallGeminiArgs {
     topK?: number
     maxOutputTokens?: number
   }
+  /** When true, disables thinking tokens so the full token budget is available for output. Defaults to true. */
+  disableThinking?: boolean
 }
 
 type GeminiSuccess = { ok: true; raw: string }
 type GeminiFailure = { ok: false; reason: GeminiFailReason; status?: number }
 
+interface GeminiPart {
+  text?: string
+  /** Present on thinking-model responses; these tokens are internal reasoning and must be excluded from output. */
+  thought?: boolean
+}
+
 interface GeminiApiResponse {
   candidates?: Array<{
     content?: {
-      parts?: Array<{ text?: string }>
+      parts?: GeminiPart[]
     }
+    finishReason?: string
   }>
 }
 
@@ -45,11 +54,28 @@ function mapHttpFailure(status: number): GeminiFailure {
   return { ok: false, reason: 'network', status }
 }
 
+function logGeminiResponse(model: string, payload: GeminiApiResponse): void {
+  const candidate = payload.candidates?.[0]
+  const parts = candidate?.content?.parts ?? []
+  const finishReason = candidate?.finishReason ?? 'unknown'
+  const lines: string[] = [`[gemini] response from ${model} — ${parts.length} part(s), finishReason: ${finishReason}`]
+
+  parts.forEach((part, i) => {
+    const tag = part.thought ? '🧠 thought' : '📤 output'
+    const text = part.text ?? ''
+    const preview = text.length > 300 ? `${text.slice(0, 300)}…` : text
+    lines.push(`  part[${i}] ${tag} (${text.length} chars): ${preview}`)
+  })
+
+  console.info(lines.join('\n'))
+}
+
 function extractResponseText(payload: GeminiApiResponse): string | null {
   const parts = payload.candidates?.[0]?.content?.parts
   if (!Array.isArray(parts) || parts.length === 0) return null
 
   const text = parts
+    .filter((part) => !part.thought)
     .map((part) => (typeof part.text === 'string' ? part.text : ''))
     .join('')
     .trim()
@@ -70,7 +96,7 @@ export async function callGemini(args: CallGeminiArgs): Promise<GeminiSuccess | 
     temperature: args.generationConfig?.temperature ?? 0,
     topP: args.generationConfig?.topP ?? 0,
     topK: args.generationConfig?.topK ?? 1,
-    maxOutputTokens: args.generationConfig?.maxOutputTokens ?? 1024,
+    maxOutputTokens: args.generationConfig?.maxOutputTokens ?? 2048,
   }
 
   try {
@@ -97,6 +123,7 @@ export async function callGemini(args: CallGeminiArgs): Promise<GeminiSuccess | 
             maxOutputTokens: generationConfig.maxOutputTokens,
             responseMimeType: 'application/json',
             responseSchema: args.responseSchema,
+            ...(args.disableThinking !== false ? { thinkingConfig: { thinkingBudget: 0 } } : {}),
           },
         }),
       },
@@ -107,6 +134,9 @@ export async function callGemini(args: CallGeminiArgs): Promise<GeminiSuccess | 
     }
 
     const payload = (await response.json()) as GeminiApiResponse
+    if (process.env.DEBUG_GEMINI_RAW === 'true' || process.env.DEBUG_GEMINI_RAW === '1') {
+      logGeminiResponse(model, payload)
+    }
     const raw = extractResponseText(payload)
     if (!raw) {
       return { ok: false, reason: 'empty_response' }

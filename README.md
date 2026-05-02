@@ -49,7 +49,7 @@ npx vercel dev
 
 ## How it works
 
-1. **Questions** — Each session has **five** open-ended prompts: **three fixed** (conflict, risk, communication) plus **two randomly sampled** from a rotating pool, so replays vary which traits get extra coverage.
+1. **Questions** — Each session has **five** open-ended prompts: **three fixed** (conflict, power, moral ambiguity) plus **two randomly sampled** from a rotating pool (including risk, communication, and others), so replays vary which traits get extra coverage.
 2. **Submit** — Answers must be at least **12 characters** per question. The client POSTs to `/api/analyze` with `answers` and optional per-question metadata (`id`, `primaryTraits`) so the backend can weight answers by which traits each question targets.
 3. **Analysis** — With a valid API key, the server asks Gemini for structured trait JSON, validates it, and returns normalized scores. Otherwise (or on Gemini/validation failure), the server uses `analyzeTextResponses`: keyword- and style-based heuristics with **no randomness** for identical inputs.
 4. **Matching** — `mapTraitsToCharacter` scores the user against a roster of **Star Wars profiles** using a weighted similarity layer (`similarity.ts`); partial character profiles only compare traits that are defined.

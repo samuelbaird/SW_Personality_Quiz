@@ -43,6 +43,21 @@ const COGNITIVE_PHRASES: Partial<Record<TraitKey, TraitPhrase>> = {
     mid: 'a calibrated relationship with risk',
     high: 'a bold appetite for risk when the upside is worth it',
   },
+  authorityRigidity: {
+    low: 'a flexible, context-sensitive approach to rules and authority',
+    mid: 'a measured balance between enforcing standards and adapting to circumstance',
+    high: 'a strict, non-negotiable approach to authority and doctrine',
+  },
+  evaluationBasis: {
+    low: 'a results-first mindset that judges by outcomes above all',
+    mid: 'a pragmatic blend of outcome and process in how you judge performance',
+    high: 'a principled focus on method and reasoning quality over raw outcomes',
+  },
+  competenceSensitivity: {
+    low: 'a loyalty- and outcome-driven standard that weights allegiance over demonstrated skill',
+    mid: 'a balanced weighting of competence signals alongside loyalty and results',
+    high: 'a sharp eye for demonstrated skill and reasoning quality, even in failure',
+  },
 }
 
 const EXPRESSION_PHRASES: Partial<Record<TraitKey, TraitPhrase>> = {

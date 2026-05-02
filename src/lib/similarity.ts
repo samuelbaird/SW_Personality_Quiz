@@ -16,7 +16,7 @@ import { clamp01 } from './traits'
 const STRONG_ALIGNMENT_THRESHOLD = 0.8
 
 /** Bonus added per unit of weight when both sides clear the strong-alignment bar. */
-const ALIGNMENT_BONUS_RATE = 0.02
+const ALIGNMENT_BONUS_RATE = 0.20
 
 /**
  * Coverage blends into the final score as:
@@ -32,7 +32,7 @@ const COVERAGE_SCALE = 0.25
 
 const DEFAULT_TRAIT_WEIGHTS: Record<TraitKey, number> = {
   // Core identity traits.
-  morality: 2.0,
+  morality: 1.5,
   agency: 2.0,
   emotionalRegulation: 2.0,
 
@@ -42,6 +42,10 @@ const DEFAULT_TRAIT_WEIGHTS: Record<TraitKey, number> = {
   strategicThinking: 1.5,
   conviction: 1.5,
   riskTolerance: 1.5,
+  authorityOrientation: 2.0,
+  authorityRigidity: 1.8,
+  evaluationBasis: 1.8,
+  competenceSensitivity: 1.6,
 
   // Expression style traits.
   eloquence: 1.3,
@@ -79,6 +83,10 @@ export const TRAIT_CATEGORIES: Record<TraitKey, TraitCategory> = {
   strategicThinking: 'structural',
   conviction: 'structural',
   riskTolerance: 'structural',
+  authorityOrientation: 'structural',
+  authorityRigidity: 'structural',
+  evaluationBasis: 'structural',
+  competenceSensitivity: 'structural',
 
   eloquence: 'expression',
   formality: 'expression',
@@ -96,11 +104,11 @@ export const TRAIT_CATEGORIES: Record<TraitKey, TraitCategory> = {
  * are scaled proportionally so relative importance is preserved.
  *
  * Baseline uncapped maximums (all traits present, default weights):
- *   core: 6.0   structural: 7.5   expression: 7.9
+ *   core: 6.0   structural: 12.7   expression: 7.9
  */
 const CATEGORY_CAPS: Record<TraitCategory, number> = {
   core: 6,
-  structural: 6,
+  structural: 9,
   expression: 4,
 }
 

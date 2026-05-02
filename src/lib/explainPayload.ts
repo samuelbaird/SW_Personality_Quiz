@@ -5,6 +5,7 @@ import type {
   TraitDescriptor,
   TraitKey,
 } from '../types/quiz'
+import { clientWantsGeminiDebugLogs } from './debugGeminiClient'
 import { clamp01, getTraitDescriptors, TRAIT_KEYS } from './traits'
 
 export const EXPLAIN_PAYLOAD_VERSION = 1
@@ -32,6 +33,8 @@ export interface ExplainRequestPayload {
   aligned: ExplainTraitSignal[]
   divergent: ExplainTraitSignal[]
   strongMatches: TraitKey[]
+  /** When true and server DEBUG_GEMINI_RAW is set, responses may include `_geminiDebug.raw`. */
+  debugGemini?: boolean
 }
 
 const TRAIT_META = getTraitDescriptors().reduce(
@@ -97,5 +100,6 @@ export function buildExplainPayload(
     aligned: sorted.slice(0, 3).map((entry) => toSignal(entry.trait, quantizedTraits[entry.trait])),
     divergent: [...sorted].reverse().slice(0, 2).map((entry) => toSignal(entry.trait, quantizedTraits[entry.trait])),
     strongMatches: score.strongMatches,
+    ...(clientWantsGeminiDebugLogs ? { debugGemini: true as const } : {}),
   }
 }

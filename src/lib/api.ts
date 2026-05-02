@@ -1,11 +1,13 @@
 import type { PersonalityTraits, QuizQuestion } from '../types/quiz'
 import type { AnsweredQuestion } from './analysis'
 import { analyzeTextResponses } from './analysis'
+import { clientWantsGeminiDebugLogs } from './debugGeminiClient'
 import { normalizeTraits } from './traits'
 
 interface AnalyzeApiSuccess {
   traits: PersonalityTraits
   explanation?: string
+  _geminiDebug?: { route: 'analyze'; raw: string }
 }
 
 function isAnalyzeApiSuccess(data: unknown): data is AnalyzeApiSuccess {
@@ -30,9 +32,16 @@ export async function analyzeAnswers(
   answers: string[],
   questions: QuizQuestion[],
 ): Promise<PersonalityTraits> {
-  const payload = {
+  const payload: {
+    answers: string[]
+    questions: { id: string; primaryTraits: string[] }[]
+    debugGemini?: boolean
+  } = {
     answers,
     questions: questions.map(({ id, primaryTraits }) => ({ id, primaryTraits })),
+  }
+  if (clientWantsGeminiDebugLogs) {
+    payload.debugGemini = true
   }
 
   try {
@@ -54,6 +63,10 @@ export async function analyzeAnswers(
     const data: unknown = await response.json()
     if (!isAnalyzeApiSuccess(data)) {
       throw new Error('Received invalid trait payload from server')
+    }
+
+    if (clientWantsGeminiDebugLogs && data._geminiDebug?.raw !== undefined) {
+      console.info('[Gemini raw] POST /api/analyze', data._geminiDebug.raw)
     }
 
     return normalizeTraits(data.traits)

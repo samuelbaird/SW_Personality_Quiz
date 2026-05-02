@@ -100,9 +100,16 @@ interface TextFeatures {
 
   formalDensity: number
   storyDensity: number
+  directDensity: number
 
   impulsiveDensity: number
   controlledDensity: number
+
+  outcomeDensity: number
+  processDensity: number
+
+  loyaltyDensity: number
+  competenceDensity: number
 }
 
 const SENTENCE_SPLIT = /[.!?]+/
@@ -190,9 +197,16 @@ function extractTextFeatures(text: string): TextFeatures {
 
     formalDensity: density(countPhraseMatches(text, FORMAL_WORDS), wordCount),
     storyDensity: density(countPhraseMatches(text, STORY_WORDS), wordCount),
+    directDensity: density(countPhraseMatches(text, DIRECT_WORDS), wordCount),
 
     impulsiveDensity: density(countPhraseMatches(text, IMPULSIVE_WORDS), wordCount),
     controlledDensity: density(countPhraseMatches(text, CONTROLLED_WORDS), wordCount),
+
+    outcomeDensity: density(countPhraseMatches(text, OUTCOME_WORDS), wordCount),
+    processDensity: density(countPhraseMatches(text, PROCESS_WORDS), wordCount),
+
+    loyaltyDensity: density(countPhraseMatches(text, LOYALTY_WORDS), wordCount),
+    competenceDensity: density(countPhraseMatches(text, COMPETENCE_WORDS), wordCount),
   }
 }
 
@@ -266,7 +280,7 @@ function featuresToTraits(f: TextFeatures): PersonalityTraits {
       normalize(f.uniqueRatio, 0.3, 0.85) * 0.3,
   )
 
-  const narrativeStyle = biasedAxis(0, f.storyDensity)
+  const narrativeStyle = biasedAxis(f.directDensity, f.storyDensity)
 
   // Formality: contractions push casual; formal connectors push formal.
   const formality = clamp01(
@@ -293,6 +307,14 @@ function featuresToTraits(f: TextFeatures): PersonalityTraits {
     strategicThinking,
     conviction,
     riskTolerance,
+    // Authority orientation: directive command language vs. diplomatic/collaborative framing.
+    authorityOrientation: biasedAxis(f.serviceDensity + f.collectiveDensity * 0.5, f.controlDensity),
+    // Rigid/flexible language is a reliable proxy for doctrinal vs. adaptive authority style.
+    authorityRigidity: biasedAxis(f.flexibleDensity, f.rigidDensity),
+    // Outcome vs. process language directly probes whether decisions are judged by results or method.
+    evaluationBasis: biasedAxis(f.outcomeDensity, f.processDensity),
+    // Competence vs. loyalty language distinguishes skill-driven from relationship-driven judgment.
+    competenceSensitivity: biasedAxis(f.loyaltyDensity, f.competenceDensity),
 
     eloquence,
     emotionalTone,
@@ -322,7 +344,7 @@ const ASSERTIVE_WORDS = [
 ] as const
 
 const LIGHT_WORDS = [
-  'help', 'helping', 'protect', 'protecting', 'save', 'saving',
+  'protect', 'protecting', 'save', 'saving',
   'compassion', 'kindness', 'kind', 'hope', 'honor', 'honest',
   'justice', 'fair', 'fairness', 'truth', 'good', 'right',
   'selfless', 'love', 'trust', 'peace', 'mercy', 'forgive',
@@ -330,7 +352,7 @@ const LIGHT_WORDS = [
 ] as const
 
 const DARK_WORDS = [
-  'power', 'control', 'fear', 'anger', 'rage', 'destroy', 'revenge',
+  'domination', 'subjugate', 'tyranny', 'fear', 'anger', 'rage', 'destroy', 'revenge',
   'selfish', 'hate', 'hatred', 'ruthless', 'manipulate', 'manipulation',
   'dominate', 'betray', 'betrayal', 'crush', 'eliminate', 'punish',
   'enemy', 'enemies', 'cruel', 'merciless',
@@ -409,7 +431,7 @@ const BOLD_WORDS = [
 
 const CAUTIOUS_WORDS = [
   'careful', 'carefully', 'cautious', 'caution', 'safe', 'safer',
-  'wait', 'hesitate', 'hesitant', 'avoid', 'measured', 'reserved',
+  'wait', 'hesitate', 'hesitant', 'avoid', 'reserved',
 ] as const
 
 const FORMAL_WORDS = [
@@ -433,4 +455,33 @@ const CONTROLLED_WORDS = [
   'calmly', 'calm', 'patient', 'patience', 'measured', 'consider',
   'considered', 'think it through', 'pause', 'reflect', 'reflected',
   'composed', 'breathe',
+] as const
+
+const DIRECT_WORDS = [
+  'the answer is', 'simply put', 'in short', 'the point is', 'to be clear',
+  'plainly', 'directly', 'the fact is', 'in summary', 'put simply',
+  'to put it simply', 'bottom line is', 'basically',
+] as const
+
+const OUTCOME_WORDS = [
+  'result', 'results', 'outcome', 'outcomes', 'impact', 'what worked',
+  'whether it works', 'achieved', 'effective', 'end result', 'succeeded',
+  'success', 'bottom line', 'what matters', 'end up', 'in the end',
+] as const
+
+const PROCESS_WORDS = [
+  'properly', 'the right way', 'step by step', 'procedure', 'protocol',
+  'according to', 'principle', 'rules', 'how it should', 'correct approach',
+  'the correct', 'standard', 'guidelines', 'done correctly', 'by the book',
+] as const
+
+const LOYALTY_WORDS = [
+  'loyal', 'loyalty', 'reliable', 'dependable', 'commitment', 'dedicated',
+  'stood by', 'counted on', 'relationship', 'been there',
+] as const
+
+const COMPETENCE_WORDS = [
+  'skill', 'skilled', 'capable', 'qualified', 'competent', 'expertise',
+  'ability', 'talented', 'track record', 'best person', 'can deliver',
+  'proven', 'experienced', 'proficient', 'knows what',
 ] as const
