@@ -82,21 +82,28 @@ export const SESSION_SIZE = 5
 
 /**
  * Build a session's question set: all fixed questions plus a random sample
- * from the rotating pool, totalling {@link SESSION_SIZE}.
+ * from the rotating pool, totalling {@link SESSION_SIZE}. The five prompts are
+ * then shuffled so display order varies each session.
  *
- * Pass a numeric `seed` to get a reproducible shuffle (useful for tests).
+ * Pass a numeric `seed` to get reproducible randomness (useful for tests).
  */
 export function buildSessionQuestions(seed?: number): QuizQuestion[] {
   const pool = [...ROTATING_QUESTIONS]
   const rng = seed !== undefined ? seededRandom(seed) : Math.random
 
-  for (let i = pool.length - 1; i > 0; i--) {
-    const j = Math.floor(rng() * (i + 1))
-    ;[pool[i], pool[j]] = [pool[j], pool[i]]
-  }
+  shuffleInPlace(pool, rng)
 
   const rotating = pool.slice(0, SESSION_SIZE - FIXED_QUESTIONS.length)
-  return [...FIXED_QUESTIONS, ...rotating]
+  const session = [...FIXED_QUESTIONS, ...rotating]
+  shuffleInPlace(session, rng)
+  return session
+}
+
+function shuffleInPlace<T>(items: T[], rng: () => number): void {
+  for (let i = items.length - 1; i > 0; i--) {
+    const j = Math.floor(rng() * (i + 1))
+    ;[items[i], items[j]] = [items[j], items[i]]
+  }
 }
 
 /** Simple LCG seeded pseudo-random number generator, returns values in [0, 1). */

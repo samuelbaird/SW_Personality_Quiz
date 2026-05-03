@@ -2,10 +2,12 @@ import { motion } from 'framer-motion'
 import { AnalysisSummary } from '../components/AnalysisSummary'
 import { ResultCard } from '../components/ResultCard'
 import { TraitBreakdown } from '../components/TraitBreakdown'
+import type { CharacterTheme } from '../lib/characterThemes'
 import type { QuizResult } from '../types/quiz'
 
 interface ResultProps {
   result: QuizResult
+  theme: CharacterTheme
   onTryAgain: () => void
   onRegenerateExplanation: () => void
 }
@@ -23,7 +25,7 @@ const sectionVariants = {
   visible: { opacity: 1, y: 0, transition: { duration: 0.45 } },
 }
 
-export function Result({ result, onTryAgain, onRegenerateExplanation }: ResultProps) {
+export function Result({ result, theme, onTryAgain, onRegenerateExplanation }: ResultProps) {
   async function handleShare() {
     const text = `I got ${result.character.name} on the Star Wars AI Personality Quiz!`
     const shareData = {
@@ -47,11 +49,11 @@ export function Result({ result, onTryAgain, onRegenerateExplanation }: ResultPr
       className="mx-auto w-full max-w-4xl space-y-6"
     >
       <motion.div variants={sectionVariants}>
-        <ResultCard result={result} />
+        <ResultCard result={result} theme={theme} />
       </motion.div>
 
       <motion.div variants={sectionVariants}>
-        <TraitBreakdown traits={result.traits} dominantTraits={result.dominantTraits} />
+        <TraitBreakdown traits={result.traits} dominantTraits={result.dominantTraits} theme={theme} />
       </motion.div>
 
       <motion.div variants={sectionVariants}>
@@ -65,7 +67,8 @@ export function Result({ result, onTryAgain, onRegenerateExplanation }: ResultPr
         <button
           type="button"
           onClick={onTryAgain}
-          className="rounded-lg border border-slate-600 px-5 py-2 text-sm text-slate-200 transition hover:border-slate-400"
+          className="rounded-lg border px-5 py-2 text-sm text-slate-200 transition hover:brightness-125"
+          style={{ borderColor: theme.border }}
         >
           Try Again
         </button>
@@ -73,7 +76,8 @@ export function Result({ result, onTryAgain, onRegenerateExplanation }: ResultPr
           type="button"
           onClick={onRegenerateExplanation}
           disabled={result.explanationSource === 'pending'}
-          className="rounded-lg border border-cyan-500/50 px-5 py-2 text-sm text-cyan-200 transition hover:border-cyan-300 disabled:cursor-not-allowed disabled:opacity-50"
+          className="rounded-lg border px-5 py-2 text-sm transition hover:brightness-125 disabled:cursor-not-allowed disabled:opacity-50"
+          style={{ borderColor: `${theme.accent}80`, color: theme.accent }}
         >
           Regenerate Reading
         </button>
@@ -82,7 +86,8 @@ export function Result({ result, onTryAgain, onRegenerateExplanation }: ResultPr
           onClick={() => {
             void handleShare()
           }}
-          className="rounded-lg bg-cyan-500 px-5 py-2 text-sm font-semibold text-slate-900 transition hover:bg-cyan-400"
+          className="rounded-lg px-5 py-2 text-sm font-semibold text-slate-900 transition hover:brightness-110"
+          style={{ backgroundColor: theme.accent }}
         >
           Share Result
         </button>

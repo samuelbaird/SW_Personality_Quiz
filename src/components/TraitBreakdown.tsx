@@ -1,10 +1,12 @@
 import { motion } from 'framer-motion'
+import type { CharacterTheme } from '../lib/characterThemes'
 import { getTraitsByGroup, traitToPercent } from '../lib/traits'
 import type { PersonalityTraits, TraitDescriptor, TraitKey, TraitGroup } from '../types/quiz'
 
 interface TraitBreakdownProps {
   traits: PersonalityTraits
   dominantTraits: readonly TraitKey[]
+  theme: CharacterTheme
 }
 
 const sectionVariants = {
@@ -21,7 +23,7 @@ const rowVariants = {
   visible: { opacity: 1, x: 0 },
 }
 
-export function TraitBreakdown({ traits, dominantTraits }: TraitBreakdownProps) {
+export function TraitBreakdown({ traits, dominantTraits, theme }: TraitBreakdownProps) {
   const dominantSet = new Set(dominantTraits)
 
   return (
@@ -29,14 +31,23 @@ export function TraitBreakdown({ traits, dominantTraits }: TraitBreakdownProps) 
       initial="hidden"
       animate="visible"
       variants={sectionVariants}
-      className="rounded-2xl border border-slate-700/80 bg-slate-900/80 p-6 shadow-[0_0_40px_rgba(59,130,246,0.12)] md:p-8"
+      className="rounded-2xl border bg-slate-900/80 p-6 md:p-8"
+      style={{
+        borderColor: theme.border,
+        boxShadow: `0 0 40px ${theme.glow}`,
+      }}
     >
       <header className="mb-6 flex items-center justify-between">
         <div>
-          <p className="text-xs uppercase tracking-[0.28em] text-cyan-300/80">Holocron Scan</p>
+          <p
+            className="text-xs uppercase tracking-[0.28em]"
+            style={{ color: `${theme.accent}CC` }}
+          >
+            Holocron Scan
+          </p>
           <h3 className="mt-1 text-xl font-semibold text-slate-100 md:text-2xl">Trait Breakdown</h3>
         </div>
-        <DominantBadges dominantTraits={dominantTraits} traits={traits} />
+        <DominantBadges dominantTraits={dominantTraits} traits={traits} theme={theme} />
       </header>
 
       <div className="grid gap-8 md:grid-cols-2">
@@ -46,6 +57,7 @@ export function TraitBreakdown({ traits, dominantTraits }: TraitBreakdownProps) 
           group="cognitive"
           traits={traits}
           dominantSet={dominantSet}
+          theme={theme}
         />
         <TraitGroupSection
           title="Communication Style"
@@ -53,6 +65,7 @@ export function TraitBreakdown({ traits, dominantTraits }: TraitBreakdownProps) 
           group="expression"
           traits={traits}
           dominantSet={dominantSet}
+          theme={theme}
         />
       </div>
     </motion.section>
@@ -65,9 +78,10 @@ interface TraitGroupSectionProps {
   group: TraitGroup
   traits: PersonalityTraits
   dominantSet: Set<TraitKey>
+  theme: CharacterTheme
 }
 
-function TraitGroupSection({ title, subtitle, group, traits, dominantSet }: TraitGroupSectionProps) {
+function TraitGroupSection({ title, subtitle, group, traits, dominantSet, theme }: TraitGroupSectionProps) {
   const descriptors = getTraitsByGroup(group)
   return (
     <div>
@@ -82,6 +96,7 @@ function TraitGroupSection({ title, subtitle, group, traits, dominantSet }: Trai
             descriptor={descriptor}
             value={traits[descriptor.key]}
             highlighted={dominantSet.has(descriptor.key)}
+            theme={theme}
           />
         ))}
       </ul>
@@ -93,13 +108,11 @@ interface TraitRowProps {
   descriptor: TraitDescriptor
   value: number
   highlighted: boolean
+  theme: CharacterTheme
 }
 
-function TraitRow({ descriptor, value, highlighted }: TraitRowProps) {
+function TraitRow({ descriptor, value, highlighted, theme }: TraitRowProps) {
   const pct = traitToPercent(value)
-  const trackClass = highlighted
-    ? 'h-full rounded-full bg-gradient-to-r from-cyan-300 via-sky-400 to-blue-500'
-    : 'h-full rounded-full bg-gradient-to-r from-indigo-500 to-purple-400'
 
   return (
     <motion.li variants={rowVariants}>
@@ -107,7 +120,14 @@ function TraitRow({ descriptor, value, highlighted }: TraitRowProps) {
         <span className="flex items-center gap-2 text-slate-200">
           {descriptor.label}
           {highlighted ? (
-            <span className="rounded-full border border-cyan-400/50 bg-cyan-400/10 px-2 py-0.5 text-[10px] uppercase tracking-widest text-cyan-200">
+            <span
+              className="rounded-full border px-2 py-0.5 text-[10px] uppercase tracking-widest"
+              style={{
+                borderColor: `${theme.accent}80`,
+                backgroundColor: `${theme.accent}1A`,
+                color: theme.accent,
+              }}
+            >
               Dominant
             </span>
           ) : null}
@@ -123,7 +143,12 @@ function TraitRow({ descriptor, value, highlighted }: TraitRowProps) {
         aria-label={`${descriptor.label}: ${descriptor.poles.low} to ${descriptor.poles.high}`}
       >
         <motion.div
-          className={trackClass}
+          className="h-full rounded-full"
+          style={
+            highlighted
+              ? { background: `linear-gradient(to right, ${theme.border}, ${theme.accent})` }
+              : { background: 'linear-gradient(to right, #6366f1, #a855f7)' }
+          }
           initial={{ width: 0 }}
           animate={{ width: `${pct}%` }}
           transition={{ duration: 0.6, ease: 'easeOut' }}
@@ -140,9 +165,10 @@ function TraitRow({ descriptor, value, highlighted }: TraitRowProps) {
 interface DominantBadgesProps {
   dominantTraits: readonly TraitKey[]
   traits: PersonalityTraits
+  theme: CharacterTheme
 }
 
-function DominantBadges({ dominantTraits, traits }: DominantBadgesProps) {
+function DominantBadges({ dominantTraits, traits, theme }: DominantBadgesProps) {
   const descriptors = getTraitsByGroup('cognitive')
     .concat(getTraitsByGroup('expression'))
   const labelByKey = new Map(descriptors.map((d) => [d.key, d.label]))
@@ -152,7 +178,12 @@ function DominantBadges({ dominantTraits, traits }: DominantBadgesProps) {
       {dominantTraits.map((key) => (
         <span
           key={key}
-          className="rounded-full border border-cyan-400/40 bg-cyan-400/5 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-widest text-cyan-200"
+          className="rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-widest"
+          style={{
+            borderColor: `${theme.accent}66`,
+            backgroundColor: `${theme.accent}0D`,
+            color: theme.accent,
+          }}
           title={`Dominant: ${labelByKey.get(key) ?? key} (${traitToPercent(traits[key])}%)`}
         >
           {labelByKey.get(key) ?? key}

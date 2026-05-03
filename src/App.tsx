@@ -1,6 +1,7 @@
-import { AnimatePresence } from 'framer-motion'
+import { AnimatePresence, motion } from 'framer-motion'
 import { LoadingScreen } from './components/LoadingScreen'
 import { useQuiz } from './hooks/useQuiz'
+import { getCharacterTheme } from './lib/characterThemes'
 import { Home } from './pages/Home'
 import { Quiz } from './pages/Quiz'
 import { Result } from './pages/Result'
@@ -23,6 +24,8 @@ function App() {
     tryAgain,
   } = useQuiz()
 
+  const theme = getCharacterTheme(result?.character.id ?? '')
+
   return (
     <main className="relative min-h-screen px-4 py-10 text-slate-100">
       {/* z-0 (not negative): negative z-index can paint behind <body> and hide the image */}
@@ -32,6 +35,21 @@ function App() {
           style={{ backgroundImage: "url('/imperial-corridor-bg.png')" }}
           aria-hidden
         />
+        {/* Character portrait fades in over the corridor when a result is shown */}
+        <AnimatePresence>
+          {screen === 'result' && result ? (
+            <motion.div
+              key={result.character.id}
+              className="absolute inset-0 bg-cover bg-center bg-no-repeat"
+              style={{ backgroundImage: `url('${theme.image}')` }}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.6 }}
+              aria-hidden
+            />
+          ) : null}
+        </AnimatePresence>
         <div className="absolute inset-0 bg-slate-950/65 backdrop-blur-[1px]" aria-hidden />
         <div
           className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(30,64,175,0.22),transparent_55%),radial-gradient(circle_at_bottom,rgba(190,24,93,0.12),transparent_42%)]"
@@ -66,6 +84,7 @@ function App() {
           <Result
             key="result"
             result={result}
+            theme={theme}
             onTryAgain={tryAgain}
             onRegenerateExplanation={regenerateExplanation}
           />
