@@ -40,8 +40,8 @@ export const geminiExplainer: ExplainerProvider = {
     })
 
     if (!result.ok) {
-      console.warn('[explain] Gemini call failed', { reason: result.reason })
-      return { ok: false, reason: result.reason }
+      console.warn('[explain] Gemini call failed', result)
+      return { ok: false as const, ...(result as { reason: string }) }
     }
 
     const parsed = safeParseExplanationResponse(result.raw)

@@ -102,10 +102,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           analyzeFallbackRaw = geminiResult.raw
         }
       } else {
-        console.warn('[analyze] Gemini call failed; falling back', {
-          reason: geminiResult.reason,
-          status: geminiResult.status,
-        })
+        console.warn('[analyze] Gemini call failed; falling back', geminiResult)
       }
     }
 

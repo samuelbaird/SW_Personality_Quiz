@@ -121,7 +121,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const provider = getExplainerProvider()
     const generated = await provider.generate(payload)
     if (!generated.ok) {
-      console.warn('[explain] provider failed', { reason: generated.reason, latencyMs: Date.now() - startedAt })
+      console.warn('[explain] provider failed', { ...generated, latencyMs: Date.now() - startedAt })
       return res.status(200).json({
         ...fallback(payload.version),
         ...(wantGeminiDebug && generated.geminiRaw
