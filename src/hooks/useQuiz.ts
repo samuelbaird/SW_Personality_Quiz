@@ -5,7 +5,7 @@ import { fetchExplanation } from '../lib/explainApi'
 import { buildExplainPayload } from '../lib/explainPayload'
 import { buildSessionQuestions } from '../lib/questions'
 import { pickDominantTraits } from '../lib/traits'
-import type { QuizQuestion, QuizResult } from '../types/quiz'
+import type { QuizQuestion, QuizResult, TraitKey } from '../types/quiz'
 
 export type AppScreen = 'home' | 'quiz' | 'loading' | 'result'
 
@@ -19,6 +19,9 @@ export function useQuiz() {
   const [result, setResult] = useState<QuizResult | null>(null)
   const [error, setError] = useState<string | null>(null)
   const explanationRequestId = useRef(0)
+  // Trait keys with no signal in the user's answers; the matcher excludes
+  // these so it doesn't reward characters profiled near 0.5 on those traits.
+  const lastMissingTraits = useRef<readonly TraitKey[]>([])
 
   const progress = (activeQuestion / questions.length) * 100
 
@@ -59,8 +62,9 @@ export function useQuiz() {
     setScreen('loading')
 
     try {
-      const traits = await analyzeAnswers(answers, questions)
-      const match = mapTraitsToCharacterDetailed(traits)
+      const { traits, missingTraits } = await analyzeAnswers(answers, questions)
+      lastMissingTraits.current = missingTraits
+      const match = mapTraitsToCharacterDetailed(traits, missingTraits)
       const requestId = explanationRequestId.current + 1
       explanationRequestId.current = requestId
 
@@ -71,7 +75,7 @@ export function useQuiz() {
         alignmentScore: traits.morality,
         explanation: '',
         explanationSource: 'pending',
-        dominantTraits: pickDominantTraits(traits, 3),
+        dominantTraits: pickDominantTraits(traits, 3, missingTraits),
       })
       setScreen('result')
 
@@ -102,7 +106,7 @@ export function useQuiz() {
 
     const requestId = explanationRequestId.current + 1
     explanationRequestId.current = requestId
-    const match = mapTraitsToCharacterDetailed(result.traits)
+    const match = mapTraitsToCharacterDetailed(result.traits, lastMissingTraits.current)
     const payload = buildExplainPayload(result.traits, match.profile, match.score)
 
     setResult((current) => {

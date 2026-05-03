@@ -110,8 +110,12 @@ export function safeParseGeminiResponse(
   const payload = parsed as GeminiPayload
   const { partial, missing } = extractTraits(payload.traits)
 
-  // Require at least half the traits to have a real value; the rest default to 0.5 via normalizeTraits.
-  if (missing.length > TRAIT_KEYS.length / 2) {
+  // Missing traits are now first-class: they're forwarded to the matcher so
+  // it skips them rather than treating them as 0.5. We only fall back when
+  // Gemini produced almost no signal at all, which usually indicates a
+  // malformed response rather than a low-signal user.
+  const MIN_SIGNALED_TRAITS = 4
+  if (TRAIT_KEYS.length - missing.length < MIN_SIGNALED_TRAITS) {
     return null
   }
 

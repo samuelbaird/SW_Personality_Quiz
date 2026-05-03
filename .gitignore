@@ -24,3 +24,7 @@ dist-ssr
 *.sw?
 
 .vercel
+
+# Local-only investigation/scratch scripts (not part of the build).
+scripts/simulateAnalysis.ts
+scripts/vectorSpaceAudit.ts

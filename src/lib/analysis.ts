@@ -7,6 +7,26 @@ export interface AnsweredQuestion {
   answer: string
 }
 
+export interface AnalysisResult {
+  /**
+   * Full trait vector. Traits with no signal default to 0.5 so the UI can
+   * always render a value, but those traits are also enumerated in
+   * {@link missingTraits} so the matcher can ignore them.
+   */
+  traits: PersonalityTraits
+  /**
+   * Trait keys where the user's answers produced no measurable signal.
+   * The matcher excludes these from per-character distance computation
+   * to avoid rewarding profiles that happen to sit near 0.5.
+   */
+  missingTraits: TraitKey[]
+}
+
+const EXPRESSION_TRAITS: readonly TraitKey[] = [
+  'eloquence', 'emotionalTone', 'confidence', 'complexity',
+  'narrativeStyle', 'formality', 'verbalDominance',
+] as const
+
 /**
  * Deterministic, question-aware trait analyzer.
  *
@@ -15,47 +35,69 @@ export interface AnsweredQuestion {
  * Expression traits use a holistic analysis of the full concatenated text, since
  * writing style is best captured across the whole response set.
  *
+ * Traits whose lexicons or stylistic features fire on no answer at all are
+ * reported as missing rather than collapsed to 0.5: a "no signal" answer
+ * shouldn't be indistinguishable from a "balanced signal" answer in the
+ * downstream matching.
+ *
  * The heuristics are intentionally simple, deterministic, and free of
  * randomness so the same input always produces the same output.
  */
-export function analyzeTextResponses(answeredQuestions: AnsweredQuestion[]): PersonalityTraits {
+export function analyzeTextResponses(answeredQuestions: AnsweredQuestion[]): AnalysisResult {
   const validPairs = answeredQuestions.filter((aq) => aq.answer.trim().length > 0)
   if (validPairs.length === 0) {
-    return neutralTraits()
+    return { traits: neutralTraits(), missingTraits: [...TRAIT_KEYS] }
   }
 
-  // Per-answer feature extraction and traits
   const perAnswer = validPairs.map((aq) => ({
     traits: featuresToTraits(extractTextFeatures(aq.answer)),
     primaryTraits: new Set(aq.primaryTraits),
   }))
 
-  // Cognitive traits: weighted average, 2× weight when in question's primaryTraits
-  const result = {} as PersonalityTraits
+  const result = neutralTraits()
+  const missing: TraitKey[] = []
+
+  // Cognitive traits: weighted average across answers that produced signal.
+  // When no answer signals a trait at all, mark it missing (so it gets
+  // excluded from matching) instead of letting it collapse to 0.5.
   for (const key of TRAIT_KEYS) {
     let totalWeight = 0
     let weightedSum = 0
     for (const { traits, primaryTraits } of perAnswer) {
+      const value = traits[key]
+      if (value === undefined) continue
       const weight = primaryTraits.has(key) ? 2 : 1
       totalWeight += weight
-      weightedSum += traits[key] * weight
+      weightedSum += value * weight
     }
-    result[key] = totalWeight === 0 ? 0.5 : clamp01(weightedSum / totalWeight)
+    if (totalWeight > 0) {
+      result[key] = clamp01(weightedSum / totalWeight)
+    } else {
+      missing.push(key)
+    }
   }
 
-  // Expression traits: holistic analysis captures writing style better
+  // Expression traits: holistic analysis captures writing style better. The
+  // holistic blob almost always has signal when individual answers do, but
+  // we still skip the blend if neither side produced a value.
   const allText = validPairs.map((aq) => aq.answer).join('\n')
   const holisticTraits = featuresToTraits(extractTextFeatures(allText))
-  const EXPRESSION_TRAITS: TraitKey[] = [
-    'eloquence', 'emotionalTone', 'confidence', 'complexity',
-    'narrativeStyle', 'formality', 'verbalDominance',
-  ]
   for (const key of EXPRESSION_TRAITS) {
-    // 70% holistic (stable style signal) + 30% weighted per-answer
-    result[key] = clamp01(holisticTraits[key] * 0.7 + result[key] * 0.3)
+    const holistic = holisticTraits[key]
+    const wasMissingPerAnswer = missing.includes(key)
+
+    if (holistic !== undefined && !wasMissingPerAnswer) {
+      // 70% holistic (stable style signal) + 30% weighted per-answer.
+      result[key] = clamp01(holistic * 0.7 + result[key] * 0.3)
+    } else if (holistic !== undefined && wasMissingPerAnswer) {
+      // Holistic-only signal: the trait isn't missing after all.
+      result[key] = holistic
+      missing.splice(missing.indexOf(key), 1)
+    }
+    // else: both missing — leave result[key] at 0.5 and keep it in `missing`.
   }
 
-  return result
+  return { traits: result, missingTraits: missing }
 }
 
 // ---------------------------------------------------------------------------
@@ -235,95 +277,92 @@ function biasedAxis(low: number, high: number, adjustment = 0): number {
   return clamp01(blended + adjustment)
 }
 
-function featuresToTraits(f: TextFeatures): PersonalityTraits {
-  // Cognitive --------------------------------------------------------------
-  const morality = biasedAxis(f.darkDensity, f.lightDensity)
+/**
+ * Convert raw text features into the subset of trait values that have actual
+ * signal in the input. Traits whose underlying lexicons/style metrics produce
+ * no measurable evidence are omitted from the result so callers can
+ * distinguish "no signal" from "balanced signal at 0.5".
+ */
+function featuresToTraits(f: TextFeatures): Partial<PersonalityTraits> {
+  const out: Partial<PersonalityTraits> = {}
 
-  const agency = biasedAxis(f.reactiveDensity, f.proactiveDensity)
-
-  const powerOrientation = biasedAxis(f.serviceDensity, f.controlDensity)
+  setIfBiased(out, 'morality', f.darkDensity, f.lightDensity)
+  setIfBiased(out, 'agency', f.reactiveDensity, f.proactiveDensity)
+  setIfBiased(out, 'powerOrientation', f.serviceDensity, f.controlDensity)
+  setIfBiased(out, 'socialOrientation', f.individualDensity, f.collectiveDensity)
+  setIfBiased(out, 'strategicThinking', f.tacticalDensity, f.longTermDensity)
+  setIfBiased(out, 'conviction', f.flexibleDensity, f.rigidDensity + f.assertiveDensity * 0.5)
+  setIfBiased(out, 'riskTolerance', f.cautiousDensity, f.boldDensity)
+  setIfBiased(
+    out,
+    'authorityOrientation',
+    f.serviceDensity + f.collectiveDensity * 0.5,
+    f.controlDensity,
+  )
+  setIfBiased(out, 'authorityRigidity', f.flexibleDensity, f.rigidDensity)
+  setIfBiased(out, 'evaluationBasis', f.outcomeDensity, f.processDensity)
+  setIfBiased(out, 'competenceSensitivity', f.loyaltyDensity, f.competenceDensity)
 
   // Higher controlled language and lower exclamation rate -> more regulated.
+  // We treat regulation as having signal whenever any of its source signals fire.
   const regulationLow = f.impulsiveDensity + f.exclamationRate * 0.5
   const regulationHigh = f.controlledDensity + clamp01(f.avgSentenceLength / 30) * 0.01
-  const emotionalRegulation = biasedAxis(regulationLow, regulationHigh)
+  setIfBiased(out, 'emotionalRegulation', regulationLow, regulationHigh)
 
-  const socialOrientation = biasedAxis(f.individualDensity, f.collectiveDensity)
+  setIfBiased(out, 'emotionalTone', f.coldDensity, f.warmDensity)
+  setIfBiased(out, 'narrativeStyle', f.directDensity, f.storyDensity)
 
-  const strategicThinking = biasedAxis(f.tacticalDensity, f.longTermDensity)
-
-  const conviction = biasedAxis(f.flexibleDensity, f.rigidDensity + f.assertiveDensity * 0.5)
-
-  const riskTolerance = biasedAxis(f.cautiousDensity, f.boldDensity)
-
-  // Expression -------------------------------------------------------------
-  // Eloquence rewards vocabulary variation and average word length.
-  const eloquence = clamp01(
+  // Eloquence and complexity are derived from text-shape statistics that
+  // exist for any non-empty input. They're always reported.
+  out.eloquence = clamp01(
     normalize(f.uniqueRatio, 0.35, 0.85) * 0.6 +
       normalize(f.avgWordLength, 3.5, 6.5) * 0.4,
   )
-
-  const emotionalTone = biasedAxis(f.coldDensity, f.warmDensity)
-
-  // Confidence rises with assertive language, falls with hedging/questions.
-  const confidence = clamp01(
-    0.5 +
-      f.assertiveDensity * 4 -
-      f.hedgingDensity * 5 -
-      f.questionRate * 2 +
-      f.exclamationRate * 1,
-  )
-
-  // Complexity reflects sentence length, with a small lift from vocabulary.
-  const complexity = clamp01(
+  out.complexity = clamp01(
     normalize(f.avgSentenceLength, 6, 28) * 0.7 +
       normalize(f.uniqueRatio, 0.3, 0.85) * 0.3,
   )
 
-  const narrativeStyle = biasedAxis(f.directDensity, f.storyDensity)
+  // Confidence and verbal dominance are 0.5-baseline traits that adjust based
+  // on assertive/hedging/punctuation cues. They have signal only when one of
+  // those cues actually fires.
+  const confidenceAdj =
+    f.assertiveDensity * 4 - f.hedgingDensity * 5 - f.questionRate * 2 + f.exclamationRate * 1
+  if (confidenceAdj !== 0) {
+    out.confidence = clamp01(0.5 + confidenceAdj)
+  }
+
+  const verbalAdj =
+    f.assertiveDensity * 3 +
+    f.exclamationRate * 1.5 +
+    f.proactiveDensity * 1 -
+    f.hedgingDensity * 4 -
+    f.questionRate * 2
+  if (verbalAdj !== 0) {
+    out.verbalDominance = clamp01(0.5 + verbalAdj)
+  }
 
   // Formality: contractions push casual; formal connectors push formal.
-  const formality = clamp01(
-    0.5 + f.formalDensity * 6 - f.contractionRate * 3,
-  )
-
-  // Verbal dominance combines assertive phrasing, exclamations, and
-  // first-person agency, dampened by hedging and questions.
-  const verbalDominance = clamp01(
-    0.5 +
-      f.assertiveDensity * 3 +
-      f.exclamationRate * 1.5 +
-      f.proactiveDensity * 1 -
-      f.hedgingDensity * 4 -
-      f.questionRate * 2,
-  )
-
-  return {
-    morality,
-    agency,
-    powerOrientation,
-    emotionalRegulation,
-    socialOrientation,
-    strategicThinking,
-    conviction,
-    riskTolerance,
-    // Authority orientation: directive command language vs. diplomatic/collaborative framing.
-    authorityOrientation: biasedAxis(f.serviceDensity + f.collectiveDensity * 0.5, f.controlDensity),
-    // Rigid/flexible language is a reliable proxy for doctrinal vs. adaptive authority style.
-    authorityRigidity: biasedAxis(f.flexibleDensity, f.rigidDensity),
-    // Outcome vs. process language directly probes whether decisions are judged by results or method.
-    evaluationBasis: biasedAxis(f.outcomeDensity, f.processDensity),
-    // Competence vs. loyalty language distinguishes skill-driven from relationship-driven judgment.
-    competenceSensitivity: biasedAxis(f.loyaltyDensity, f.competenceDensity),
-
-    eloquence,
-    emotionalTone,
-    confidence,
-    complexity,
-    narrativeStyle,
-    formality,
-    verbalDominance,
+  const formalityAdj = f.formalDensity * 6 - f.contractionRate * 3
+  if (formalityAdj !== 0) {
+    out.formality = clamp01(0.5 + formalityAdj)
   }
+
+  return out
+}
+
+/**
+ * Helper for the common pattern: compute a `biasedAxis` value from low/high
+ * lexicon densities, but only include the trait if at least one side fired.
+ */
+function setIfBiased(
+  out: Partial<PersonalityTraits>,
+  key: TraitKey,
+  low: number,
+  high: number,
+): void {
+  if (low + high <= 0) return
+  out[key] = biasedAxis(low, high)
 }
 
 // ---------------------------------------------------------------------------

@@ -149,19 +149,19 @@ export const CHARACTER_ROSTER: readonly CharacterProfile[] = [
     signature: 'Charming Operator',
     description:
       'Smooth, adaptable, and politically savvy — you read a room better than anyone and know exactly when to charm and when to act.',
+    // Pruned: morality, powerOrientation, formality, competenceSensitivity used
+    // to be declared near 0.5 and made Lando a structural attractor for any
+    // user whose other axes were neutral. Now he only declares the traits
+    // where he meaningfully takes a side.
     traits: {
-      morality: 0.7,
-      agency: 0.75,
-      emotionalRegulation: 0.7,
-      eloquence: 0.8,
-      confidence: 0.9,
-      socialOrientation: 0.85,
-      powerOrientation: 0.6,
-      formality: 0.6,
-      authorityOrientation: 0.50,
-      authorityRigidity: 0.5,
-      evaluationBasis: 0.55,
-      competenceSensitivity: 0.6,
+      agency: 0.80,
+      emotionalRegulation: 0.75,
+      eloquence: 0.85,
+      confidence: 0.90,
+      socialOrientation: 0.80,
+      authorityOrientation: 0.40,
+      authorityRigidity: 0.25,
+      evaluationBasis: 0.20,
     },
   },
   {
@@ -527,47 +527,26 @@ export const CHARACTER_ROSTER: readonly CharacterProfile[] = [
 ]
 
 /**
- * Trait weights for character matching.
- *
- * Core traits (morality, agency, emotionalRegulation) are weighted highest
- * since they anchor every profile and carry the most identity signal.
- * Signature traits act as differentiators within the same alignment band.
- */
-const DEFAULT_WEIGHTS: Partial<Record<TraitKey, number>> = {
-  morality: 1.5,
-  agency: 1.2,
-  emotionalRegulation: 1.1,
-
-  powerOrientation: 1.3,
-  strategicThinking: 1.0,
-  conviction: 1.0,
-  socialOrientation: 0.9,
-  riskTolerance: 0.9,
-  authorityOrientation: 2.0,
-  authorityRigidity: 1.8,
-  evaluationBasis: 1.8,
-  competenceSensitivity: 1.6,
-
-  verbalDominance: 0.8,
-  confidence: 0.7,
-  emotionalTone: 0.7,
-  eloquence: 0.6,
-  complexity: 0.6,
-  formality: 0.6,
-  narrativeStyle: 0.5,
-}
-
-/**
  * Map a fully-resolved {@link PersonalityTraits} profile to the closest
  * character in the roster, returning both the matched profile and the
  * similarity score for downstream UI display.
+ *
+ * Pass `missingTraits` for any trait keys where the user's answers produced
+ * no signal — those traits will be excluded from the per-character distance
+ * computation rather than defaulted to 0.5, which prevents profiles that
+ * happen to sit near 0.5 on rarely-signalled traits from acting as
+ * "neutral attractors" for low-signal users.
  */
-export function mapTraitsToCharacter(traits: PersonalityTraits): CharacterMatch {
-  return pickBestCharacter(traits, CHARACTER_ROSTER, DEFAULT_WEIGHTS)
+export function mapTraitsToCharacter(
+  traits: PersonalityTraits,
+  missingTraits?: readonly TraitKey[],
+): CharacterMatch {
+  return pickBestCharacter(traits, CHARACTER_ROSTER, missingTraits)
 }
 
 export function mapTraitsToCharacterDetailed(
   traits: PersonalityTraits,
+  missingTraits?: readonly TraitKey[],
 ): CharacterMatch & { score: CharacterScore } {
-  return pickBestCharacterDetailed(traits, CHARACTER_ROSTER, DEFAULT_WEIGHTS)
+  return pickBestCharacterDetailed(traits, CHARACTER_ROSTER, missingTraits)
 }

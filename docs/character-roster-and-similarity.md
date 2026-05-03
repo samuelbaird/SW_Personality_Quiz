@@ -61,35 +61,33 @@ User-facing copy and `primaryTraits` metadata live in [`src/lib/questions.ts`](.
 
 ---
 
-## Matching weights (`mapTraitsToCharacter`)
+## Matching weights (`DEFAULT_TRAIT_WEIGHTS`)
 
-[`mapTraitsToCharacter`](../src/lib/characterMapping.ts) passes [`DEFAULT_WEIGHTS`](../src/lib/characterMapping.ts) into the scorer. For each trait key, if `DEFAULT_WEIGHTS` does not specify a value, the engine falls back to the defaults in [`similarity.ts`](../src/lib/similarity.ts) (`DEFAULT_TRAIT_WEIGHTS`).
+[`mapTraitsToCharacter`](../src/lib/characterMapping.ts) delegates to the scorer in [`similarity.ts`](../src/lib/similarity.ts), which uses a single canonical weight table — there is no per-call override layer.
 
-**Overrides from `characterMapping.ts`:**
+The weights are calibrated against how reliably each trait can be elicited from short conversational answers. Authority/evaluation traits are no longer the highest-weighted bucket because their lexicons are narrow enough that many honest answers produce no signal at all (in which case the matcher excludes the trait via `missingTraits` rather than defaulting to 0.5).
 
 | Trait | Weight |
 |-------|--------|
 | morality | 1.5 |
-| agency | 1.2 |
-| emotionalRegulation | 1.1 |
+| agency | 1.3 |
+| emotionalRegulation | 1.2 |
 | powerOrientation | 1.3 |
+| socialOrientation | 1.0 |
 | strategicThinking | 1.0 |
 | conviction | 1.0 |
-| socialOrientation | 0.9 |
-| riskTolerance | 0.9 |
-| authorityOrientation | 2.0 |
-| authorityRigidity | 1.8 |
-| evaluationBasis | 1.8 |
-| competenceSensitivity | 1.6 |
+| riskTolerance | 1.0 |
+| authorityOrientation | 1.5 |
+| authorityRigidity | 1.3 |
+| evaluationBasis | 1.3 |
+| competenceSensitivity | 1.2 |
+| eloquence | 0.7 |
+| formality | 0.7 |
 | verbalDominance | 0.8 |
-| confidence | 0.7 |
 | emotionalTone | 0.7 |
-| eloquence | 0.6 |
-| complexity | 0.6 |
-| formality | 0.6 |
-| narrativeStyle | 0.5 |
-
-All other traits use `DEFAULT_TRAIT_WEIGHTS` from `similarity.ts` when not overridden above (for example `morality` defaults to **1.5** there, while `agency` and `emotionalRegulation` default to **2.0**).
+| complexity | 0.7 |
+| narrativeStyle | 0.6 |
+| confidence | 0.7 |
 
 ---
 
@@ -216,18 +214,14 @@ Sections follow the roster layout in code: **Light / Principled**, **Independent
 
 | Trait | Score |
 |-------|------:|
-| morality | 0.70 |
-| agency | 0.75 |
-| emotionalRegulation | 0.70 |
-| eloquence | 0.80 |
+| agency | 0.80 |
+| emotionalRegulation | 0.75 |
+| eloquence | 0.85 |
 | confidence | 0.90 |
-| socialOrientation | 0.85 |
-| powerOrientation | 0.60 |
-| formality | 0.60 |
-| authorityOrientation | 0.50 |
-| authorityRigidity | 0.50 |
-| evaluationBasis | 0.55 |
-| competenceSensitivity | 0.60 |
+| socialOrientation | 0.80 |
+| authorityOrientation | 0.40 |
+| authorityRigidity | 0.25 |
+| evaluationBasis | 0.20 |
 
 ### Ahsoka Tano (`ahsoka_tano`)
 
@@ -551,7 +545,9 @@ Matching uses [`scoreCharacter`](../src/lib/similarity.ts) / [`pickBestCharacter
 
 ### Which traits count
 
-Only traits **present on the character profile** are compared to the user. The user is expected to have a **full** `PersonalityTraits` vector (missing values are handled upstream via normalization); character targets are **partial** by design.
+A trait participates in scoring only if **(a)** the character profile declares it and **(b)** the user produced signal on it. The set of trait keys with no user signal is passed in as `missingTraits` and is excluded from per-character distance, weight, and coverage totals — so a character profiled near 0.5 on an unmeasured trait can no longer win by default.
+
+User values are still expected to be a **full** `PersonalityTraits` vector for UI display; the missing-traits list is what the matcher actually consults.
 
 ### Per-trait distance
 
@@ -566,7 +562,7 @@ Distance is multiplied by an **effective weight** for that trait (see below).
 
 ### Weights and category caps
 
-Each trait has a base weight from the overrides + `DEFAULT_TRAIT_WEIGHTS`. Traits are grouped into scoring categories:
+Each trait's weight comes from the canonical [`DEFAULT_TRAIT_WEIGHTS`](../src/lib/similarity.ts) table above. Traits are grouped into scoring categories:
 
 | Category | Traits |
 |----------|--------|
@@ -574,7 +570,7 @@ Each trait has a base weight from the overrides + `DEFAULT_TRAIT_WEIGHTS`. Trait
 | **structural** | powerOrientation, socialOrientation, strategicThinking, conviction, riskTolerance, authorityOrientation, authorityRigidity, evaluationBasis, competenceSensitivity |
 | **expression** | eloquence, emotionalTone, confidence, complexity, narrativeStyle, formality, verbalDominance |
 
-If the **sum of weights** for traits actually present on a character exceeds a **soft cap** for that category, weights in that category are scaled down proportionally (relative priorities stay the same):
+If the **sum of weights** for traits actually present on a character (after `missingTraits` filtering) exceeds a **soft cap** for that category, weights in that category are scaled down proportionally (relative priorities stay the same):
 
 | Category | Cap |
 |----------|-----|
@@ -584,7 +580,7 @@ If the **sum of weights** for traits actually present on a character exceeds a *
 
 ### Mean weighted distance and similarity
 
-Let \(w_i'\) be the **capped** weight for trait \(i\), \(d_i\) the distance, summed only over defined traits.
+Let \(w_i'\) be the **capped** weight for trait \(i\), \(d_i\) the distance, summed only over traits the character defines AND the user produced signal on.
 
 \[
 \text{meanDistance} = \frac{\sum_i d_i \cdot w_i'}{\sum_i w_i'}
@@ -594,12 +590,12 @@ Let \(w_i'\) be the **capped** weight for trait \(i\), \(d_i\) the distance, sum
 
 ### Coverage and final score
 
-**Coverage** reflects how much of the global trait-weight budget the character’s profile uses (based on **raw** weights before category caps). It penalizes very sparse profiles slightly while preserving ordering:
+**Coverage** reflects how much of the global trait-weight budget the character's signal-present profile uses (based on **raw** weights before category caps). It barely penalizes sparse profiles — a hard penalty creates a structural advantage for whichever character has the broadest declared trait list, regardless of fit:
 
-- Constants: `COVERAGE_BASE = 0.75`, `COVERAGE_SCALE = 0.25`
+- Constants: `COVERAGE_BASE = 0.90`, `COVERAGE_SCALE = 0.10`
 - `coverageFactor = COVERAGE_BASE + COVERAGE_SCALE × coverage`
 
-**Strong alignment bonus:** If **both** user and character exceed **0.8** on a trait, that trait adds bonus mass: `ALIGNMENT_BONUS_RATE × cappedWeight` per qualifying trait (`ALIGNMENT_BONUS_RATE = 0.20`). The bonus is normalized by `MAX_POSSIBLE_WEIGHT` from the global default weight vector.
+**Strong alignment bonus** (symmetric): If **both** user and character exceed **0.8** on a trait *or* both fall below **0.2**, that trait adds bonus mass: `ALIGNMENT_BONUS_RATE × cappedWeight` per qualifying trait (`ALIGNMENT_BONUS_RATE = 0.20`). The bonus is normalized by `MAX_POSSIBLE_WEIGHT` from the canonical weight vector. Matching at the dark/low end is treated as just as informative as matching at the light/high end.
 
 \[
 \text{finalScore} = \mathrm{clamp}_{[0,1]}\bigl(\text{similarity} \times \text{coverageFactor} + \text{normalizedBonus}\bigr)
@@ -609,9 +605,11 @@ Let \(w_i'\) be the **capped** weight for trait \(i\), \(d_i\) the distance, sum
 
 [`pickBestCharacterDetailed`](../src/lib/similarity.ts) evaluates **every** roster entry and selects the **highest** `finalScore`. **Ties** break by **earlier position** in the roster array.
 
-### Empty profile edge case
+### Edge cases
 
-If a character defines **no** numeric traits, scoring returns a neutral `finalScore` of **0.5** with empty contributions.
+- If a character defines no numeric traits, scoring returns a neutral `finalScore` of **0.5** with empty contributions.
+- If every trait the character defines is also flagged as missing on the user side, the same neutral fallback applies (zero overlap = no opinion).
+- When **all** traits are missing across the board (the user produced no signal at all), every character ties at 0.5 and the roster's first entry wins by position. This is the correct behavior — refuse to commit without evidence — but in practice analyzers should always produce signal on at least a few traits given non-empty answers.
 
 ---
 

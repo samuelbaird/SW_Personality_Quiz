@@ -92,9 +92,21 @@ export function traitToPercent(value: number): number {
   return Math.round(clamp01(value) * 100)
 }
 
-/** Pick the `count` highest-scoring traits for highlighting in the UI. */
-export function pickDominantTraits(traits: PersonalityTraits, count = 3): TraitKey[] {
+/**
+ * Pick the `count` highest-scoring traits for highlighting in the UI.
+ *
+ * Traits listed in `missingTraits` are excluded from selection because a trait
+ * with no signal sat at the neutral 0.5 only by default, not because the user
+ * actually expressed it strongly.
+ */
+export function pickDominantTraits(
+  traits: PersonalityTraits,
+  count = 3,
+  missingTraits: readonly TraitKey[] = [],
+): TraitKey[] {
+  const missing = new Set(missingTraits)
   return [...TRAIT_KEYS]
+    .filter((key) => !missing.has(key))
     .sort((a, b) => traits[b] - traits[a])
     .slice(0, count)
 }

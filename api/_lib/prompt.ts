@@ -6,15 +6,15 @@ export const SYSTEM_INSTRUCTION = `You are a personality analysis engine. You re
 
 OUTPUT RULES (must be followed exactly):
 1. Output a single JSON object matching the provided schema. No prose, no code fences, no commentary outside the JSON.
-2. Every trait value MUST be a number between 0 and 1 (inclusive). Use 0.5 only when the answers genuinely show no signal for that trait.
-3. Do NOT invent fields. Do NOT omit fields. Output exactly the 19 traits and the explanation field defined in the schema.
-4. The "explanation" field is at most 2 sentences (~50 words). Plain prose, no bullet lists.
-5. Be calibrated: most traits should land in [0.2, 0.8]. Extreme values (<0.2 or >0.8) are only allowed when there is strong, repeated behavioral evidence across multiple answers.
+2. Trait values are numbers between 0 and 1 (inclusive) when present.
+3. CRITICAL — NO-SIGNAL HANDLING: If a trait has no observable evidence in the answers, OMIT that trait entirely from the "traits" object. Do NOT default to 0.5. Missing traits are explicitly excluded from downstream matching, which is the correct behavior — a trait set to 0.5 is treated as a real "balanced" reading and unfairly rewards characters profiled near the center on that trait. Use null or omission only when truly no behavioral evidence exists; otherwise score the trait normally based on the available evidence.
+4. Do NOT invent fields. The "explanation" field is required and must be at most 2 sentences (~50 words). Plain prose, no bullet lists.
+5. Be calibrated: most traits with signal should land in [0.2, 0.8]. Extreme values (<0.2 or >0.8) are only allowed when there is strong, repeated behavioral evidence across multiple answers.
 6. Avoid uniform or overly balanced distributions. Distinct personalities should show clear peaks and troughs when supported by evidence.
 7. Ensure trait values remain globally consistent across all answers. Do not let a trait fluctuate significantly unless later answers provide clear contradictory evidence.
 
 EVIDENCE-BASED SCORING RULES:
-8. Every trait value MUST be grounded in observable signals from the answers (wording, reasoning style, decision framing, emotional tone, conflict handling). Do not infer global personality traits without at least one supporting signal.
+8. Every trait value MUST be grounded in observable signals from the answers (wording, reasoning style, decision framing, emotional tone, conflict handling). If you cannot point to at least one supporting signal in the text, OMIT the trait rather than guess.
 9. Do not restate trait names without behavioral justification. Traits must be derivable from evidence in the text.
 10. When assigning a trait, prioritize explicit behavioral indicators over abstract interpretation.
 
@@ -61,6 +61,11 @@ const TRAIT_SCHEMA = {
   maximum: 1,
 } as const
 
+/**
+ * Individual trait keys are intentionally NOT in `required`. Gemini is
+ * instructed to omit traits that have no observable signal in the answers, so
+ * the matcher can exclude them rather than treating them as a balanced 0.5.
+ */
 export const RESPONSE_SCHEMA = {
   type: 'object',
   properties: {
@@ -87,27 +92,6 @@ export const RESPONSE_SCHEMA = {
         evaluationBasis: TRAIT_SCHEMA,
         competenceSensitivity: TRAIT_SCHEMA,
       },
-      required: [
-        'morality',
-        'agency',
-        'powerOrientation',
-        'emotionalRegulation',
-        'socialOrientation',
-        'strategicThinking',
-        'conviction',
-        'riskTolerance',
-        'eloquence',
-        'emotionalTone',
-        'confidence',
-        'complexity',
-        'narrativeStyle',
-        'formality',
-        'verbalDominance',
-        'authorityOrientation',
-        'authorityRigidity',
-        'evaluationBasis',
-        'competenceSensitivity',
-      ],
     },
     explanation: { type: 'string' },
   },

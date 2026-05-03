@@ -1,11 +1,22 @@
-import type { PersonalityTraits, QuizQuestion } from '../types/quiz'
+import type { PersonalityTraits, QuizQuestion, TraitKey } from '../types/quiz'
 import type { AnsweredQuestion } from './analysis'
 import { analyzeTextResponses } from './analysis'
 import { clientWantsGeminiDebugLogs } from './debugGeminiClient'
-import { normalizeTraits } from './traits'
+import { normalizeTraits, TRAIT_KEYS } from './traits'
+
+export interface AnalyzeAnswersResult {
+  traits: PersonalityTraits
+  /**
+   * Trait keys for which the user's answers produced no measurable signal.
+   * The matcher uses this list to skip those traits rather than treat them
+   * as a balanced 0.5.
+   */
+  missingTraits: TraitKey[]
+}
 
 interface AnalyzeApiSuccess {
   traits: PersonalityTraits
+  missingTraits?: TraitKey[]
   explanation?: string
   _geminiDebug?: { route: 'analyze'; raw: string }
 }
@@ -16,11 +27,26 @@ function isAnalyzeApiSuccess(data: unknown): data is AnalyzeApiSuccess {
   return typeof traits === 'object' && traits !== null
 }
 
+function isTraitKey(value: unknown): value is TraitKey {
+  return typeof value === 'string' && (TRAIT_KEYS as readonly string[]).includes(value)
+}
+
+function coerceMissingTraits(value: unknown): TraitKey[] {
+  if (!Array.isArray(value)) return []
+  return value.filter(isTraitKey)
+}
+
 function buildAnsweredQuestions(answers: string[], questions: QuizQuestion[]): AnsweredQuestion[] {
   return answers.map((answer, i) => ({
     answer,
     primaryTraits: questions[i]?.primaryTraits ?? [],
   }))
+}
+
+function localFallback(answers: string[], questions: QuizQuestion[]): AnalyzeAnswersResult {
+  const pairs = buildAnsweredQuestions(answers, questions)
+  const { traits, missingTraits } = analyzeTextResponses(pairs)
+  return { traits: normalizeTraits(traits), missingTraits }
 }
 
 /**
@@ -31,7 +57,7 @@ function buildAnsweredQuestions(answers: string[], questions: QuizQuestion[]): A
 export async function analyzeAnswers(
   answers: string[],
   questions: QuizQuestion[],
-): Promise<PersonalityTraits> {
+): Promise<AnalyzeAnswersResult> {
   const payload: {
     answers: string[]
     questions: { id: string; primaryTraits: string[] }[]
@@ -53,8 +79,7 @@ export async function analyzeAnswers(
 
     if (!response.ok) {
       if (response.status === 404) {
-        const pairs = buildAnsweredQuestions(answers, questions)
-        return normalizeTraits(analyzeTextResponses(pairs))
+        return localFallback(answers, questions)
       }
       const body = await response.json().catch(() => ({ error: 'Unknown API error' }))
       throw new Error(body?.error ?? 'Failed to analyze answers')
@@ -69,11 +94,13 @@ export async function analyzeAnswers(
       console.info('[Gemini raw] POST /api/analyze', data._geminiDebug.raw)
     }
 
-    return normalizeTraits(data.traits)
+    return {
+      traits: normalizeTraits(data.traits),
+      missingTraits: coerceMissingTraits(data.missingTraits),
+    }
   } catch (error) {
     if (error instanceof TypeError) {
-      const pairs = buildAnsweredQuestions(answers, questions)
-      return normalizeTraits(analyzeTextResponses(pairs))
+      return localFallback(answers, questions)
     }
     throw error
   }

@@ -87,10 +87,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const parsed = safeParseGeminiResponse(geminiResult.raw)
         if (parsed) {
           if (parsed.missingTraitKeys.length > 0) {
-            console.warn('[analyze] Gemini omitted traits (defaulted to 0.5)', parsed.missingTraitKeys)
+            console.info(
+              '[analyze] Gemini reported no signal for traits (excluded from matching)',
+              parsed.missingTraitKeys,
+            )
           }
           return res.status(200).json({
             traits: parsed.traits,
+            missingTraits: parsed.missingTraitKeys,
             explanation: parsed.explanation,
             ...(wantGeminiDebug
               ? { _geminiDebug: { route: 'analyze' as const, raw: geminiResult.raw } }
@@ -107,9 +111,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     const answeredQuestions = buildAnsweredQuestions(trimmed, validMeta)
-    const traits = normalizeTraits(analyzeTextResponses(answeredQuestions))
+    const analysis = analyzeTextResponses(answeredQuestions)
+    const traits = normalizeTraits(analysis.traits)
     return res.status(200).json({
       traits,
+      missingTraits: analysis.missingTraits,
       explanation: '',
       ...(wantGeminiDebug && analyzeFallbackRaw
         ? { _geminiDebug: { route: 'analyze' as const, raw: analyzeFallbackRaw } }
