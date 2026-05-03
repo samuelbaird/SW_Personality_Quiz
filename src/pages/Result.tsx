@@ -2,6 +2,7 @@ import { motion } from 'framer-motion'
 import { useState } from 'react'
 import { AnalysisSummary } from '../components/AnalysisSummary'
 import { ResultCard } from '../components/ResultCard'
+import { ShareModal } from '../components/ShareModal'
 import { TraitBreakdown } from '../components/TraitBreakdown'
 import type { CharacterTheme } from '../lib/characterThemes'
 import { buildShareImage } from '../lib/shareImage'
@@ -30,48 +31,20 @@ const sectionVariants = {
 const APP_URL = 'https://swquiz.vercel.app/'
 
 export function Result({ result, theme, onTryAgain, onRegenerateExplanation }: ResultProps) {
-  const [isSharing, setIsSharing] = useState(false)
-  const [shareToast, setShareToast] = useState<string | null>(null)
+  const [isPreparingShare, setIsPreparingShare] = useState(false)
+  const [shareBlob, setShareBlob] = useState<Blob | null>(null)
+  const [shareError, setShareError] = useState<string | null>(null)
 
-  async function handleShare() {
-    const shareText = `I got ${result.character.name} on the Star Wars AI Personality Quiz! Try it: ${APP_URL}`
-    setShareToast(null)
-    setIsSharing(true)
-
+  async function openShareModal() {
+    setShareError(null)
+    setIsPreparingShare(true)
     try {
-      const imageBlob = await buildShareImage(result, theme)
-      const imageFile = new File([imageBlob], `swquiz-${result.character.id}.png`, { type: 'image/png' })
-
-      if (navigator.share && navigator.canShare?.({ files: [imageFile] })) {
-        await navigator.share({
-          title: 'Star Wars AI Personality Quiz',
-          text: shareText,
-          url: APP_URL,
-          files: [imageFile],
-        })
-        return
-      }
-
-      const imageUrl = URL.createObjectURL(imageBlob)
-      const anchor = document.createElement('a')
-      anchor.href = imageUrl
-      anchor.download = imageFile.name
-      anchor.click()
-      setTimeout(() => URL.revokeObjectURL(imageUrl), 1000)
-
-      if (navigator.clipboard?.writeText) {
-        await navigator.clipboard.writeText(shareText)
-        setShareToast('Image downloaded and caption copied. Paste both into your post.')
-      } else {
-        setShareToast(`Image downloaded. Caption: ${shareText}`)
-      }
-    } catch (error) {
-      if (error instanceof DOMException && error.name === 'AbortError') {
-        return
-      }
-      setShareToast('Unable to prepare the image right now. Please try again.')
+      const blob = await buildShareImage(result, theme)
+      setShareBlob(blob)
+    } catch {
+      setShareError('Unable to prepare the share image right now. Please try again.')
     } finally {
-      setIsSharing(false)
+      setIsPreparingShare(false)
     }
   }
 
@@ -118,20 +91,28 @@ export function Result({ result, theme, onTryAgain, onRegenerateExplanation }: R
         <button
           type="button"
           onClick={() => {
-            void handleShare()
+            void openShareModal()
           }}
-          disabled={isSharing}
+          disabled={isPreparingShare}
           className="rounded-lg px-5 py-2 text-sm font-semibold text-slate-900 transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-70"
           style={{ backgroundColor: theme.accent }}
         >
-          {isSharing ? 'Preparing image...' : 'Share Result'}
+          {isPreparingShare ? 'Preparing image...' : 'Share Result'}
         </button>
       </motion.div>
-      {shareToast ? (
+      {shareError ? (
         <motion.p variants={sectionVariants} className="text-center text-xs text-slate-300">
-          {shareToast}
+          {shareError}
         </motion.p>
       ) : null}
+      <ShareModal
+        isOpen={shareBlob !== null}
+        blob={shareBlob}
+        result={result}
+        theme={theme}
+        appUrl={APP_URL}
+        onClose={() => setShareBlob(null)}
+      />
     </motion.section>
   )
 }
