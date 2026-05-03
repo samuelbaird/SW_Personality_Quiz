@@ -3,7 +3,7 @@ import type {
   TraitDescriptor,
   TraitGroup,
   TraitKey,
-} from '../types/quiz'
+} from '../types/quiz.js'
 
 /** Clamp a number into [min, max], returning a safe fallback for NaN/Infinity. */
 export function clamp(value: number, min: number, max: number): number {

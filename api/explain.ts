@@ -1,12 +1,12 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
-import { getExplainCache, setExplainCache, checkRateLimit } from './_lib/cache'
-import { geminiDebugAllowed } from './_lib/debugGemini'
-import { getExplainerProvider } from './_lib/explainer'
-import { getJsonBody } from './_lib/parseJsonBody'
-import type { ExplainRequestPayload, ExplainTraitSignal } from '../src/lib/explainPayload'
-import { EXPLAIN_PAYLOAD_VERSION, quantizeTraitValue } from '../src/lib/explainPayload'
-import { TRAIT_KEYS } from '../src/lib/traits'
-import type { TraitKey } from '../src/types/quiz'
+import { getExplainCache, setExplainCache, checkRateLimit } from './_lib/cache.js'
+import { geminiDebugAllowed } from './_lib/debugGemini.js'
+import { getExplainerProvider } from './_lib/explainer/index.js'
+import { getJsonBody } from './_lib/parseJsonBody.js'
+import type { ExplainRequestPayload, ExplainTraitSignal } from '../src/lib/explainPayload.js'
+import { EXPLAIN_PAYLOAD_VERSION, quantizeTraitValue } from '../src/lib/explainPayload.js'
+import { TRAIT_KEYS } from '../src/lib/traits.js'
+import type { TraitKey } from '../src/types/quiz.js'
 
 interface ExplainResponseBody {
   explanation: string

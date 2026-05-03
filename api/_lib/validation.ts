@@ -1,5 +1,5 @@
-import type { PersonalityTraits, TraitKey } from '../../src/types/quiz'
-import { TRAIT_KEYS, normalizeTraits } from '../../src/lib/traits'
+import type { PersonalityTraits, TraitKey } from '../../src/types/quiz.js'
+import { TRAIT_KEYS, normalizeTraits } from '../../src/lib/traits.js'
 
 interface GeminiPayload {
   traits?: unknown

@@ -4,9 +4,9 @@ import type {
   PersonalityTraits,
   TraitDescriptor,
   TraitKey,
-} from '../types/quiz'
-import { clientWantsGeminiDebugLogs } from './debugGeminiClient'
-import { clamp01, getTraitDescriptors, TRAIT_KEYS } from './traits'
+} from '../types/quiz.js'
+import { clientWantsGeminiDebugLogs } from './debugGeminiClient.js'
+import { clamp01, getTraitDescriptors, TRAIT_KEYS } from './traits.js'
 
 export const EXPLAIN_PAYLOAD_VERSION = 1
 export const EXPLAIN_QUANTIZE_STEP = 0.05

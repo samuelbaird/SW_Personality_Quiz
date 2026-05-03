@@ -36,7 +36,7 @@ Characters only store **partial** trait objects: any trait not listed for a char
 
 ## Quiz questions
 
-User-facing copy and `primaryTraits` metadata live in [`src/lib/questions.ts`](../src/lib/questions.ts). Each session shows **`SESSION_SIZE` = 5** prompts: **three** fixed questions (always in this order), plus **two** drawn at random from the rotating pool (see `buildSessionQuestions`).
+User-facing copy and `primaryTraits` metadata live in [`src/lib/questions.ts`](../src/lib/questions.ts). Each session shows **`SESSION_SIZE` = 5** prompts: **three** fixed questions (always included), plus **two** drawn at random from the rotating pool (see `buildSessionQuestions`). All five are then shuffled so display order varies each session.
 
 ### Fixed (every session)
 

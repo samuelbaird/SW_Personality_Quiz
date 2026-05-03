@@ -1,12 +1,12 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
-import type { AnsweredQuestion } from '../src/lib/analysis'
-import { analyzeTextResponses } from '../src/lib/analysis'
-import { normalizeTraits } from '../src/lib/traits'
-import { geminiDebugAllowed } from './_lib/debugGemini'
-import { callGemini } from './_lib/gemini'
-import { getJsonBody } from './_lib/parseJsonBody'
-import { RESPONSE_SCHEMA, SYSTEM_INSTRUCTION, buildUserPrompt } from './_lib/prompt'
-import { safeParseGeminiResponse } from './_lib/validation'
+import type { AnsweredQuestion } from '../src/lib/analysis.js'
+import { analyzeTextResponses } from '../src/lib/analysis.js'
+import { normalizeTraits } from '../src/lib/traits.js'
+import { geminiDebugAllowed } from './_lib/debugGemini.js'
+import { callGemini } from './_lib/gemini.js'
+import { getJsonBody } from './_lib/parseJsonBody.js'
+import { RESPONSE_SCHEMA, SYSTEM_INSTRUCTION, buildUserPrompt } from './_lib/prompt.js'
+import { safeParseGeminiResponse } from './_lib/validation.js'
 
 interface QuestionMeta {
   id: string

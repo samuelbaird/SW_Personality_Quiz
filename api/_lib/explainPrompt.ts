@@ -1,4 +1,4 @@
-import type { ExplainRequestPayload } from '../../src/lib/explainPayload'
+import type { ExplainRequestPayload } from '../../src/lib/explainPayload.js'
 
 export const EXPLAIN_SYSTEM_INSTRUCTION = `You are an in-universe archivist writing concise personality readings.
 

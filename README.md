@@ -65,12 +65,15 @@ src/
   components/     # QuestionCard, ResultCard, TraitBreakdown, LoadingScreen, …
   pages/          # Home, Quiz, Result
   hooks/          # useQuiz — flow and submission
-  lib/            # questions, traits, analysis, similarity, characterMapping, api, explanation
+  lib/            # questions, traits, analysis, similarity, characterMapping,
+  |               # characterThemes, api, explainApi, explainPayload, explanation,
+  |               # debugGeminiClient; analysis/explainMatch sub-module
   types/          # quiz and result types
 api/
   analyze.ts      # POST handler: Gemini → validate, or deterministic traits
   explain.ts      # POST handler: Gemini explanation with fallback + cache
-  _lib/           # gemini client, prompt/schema, response validation, cache
+  _lib/           # gemini client, prompt/explainPrompt, response validation, cache,
+  |               # parseJsonBody, debugGemini; explainer/ provider sub-module
 ```
 
 ## Notes
@@ -78,4 +81,5 @@ api/
 - Error handling and validation are included on both client and API.
 - UI is dark-themed, responsive, and uses a full-page background asset under `public/`.
 - For production deployment, configure `GEMINI_API_KEY` in the Vercel project environment; the frontend build does not embed that secret.
-- Optional controls for explanation route: `EXPLAIN_DISABLED`, `GEMINI_EXPLAIN_MODEL`, `EXPLAIN_RATE_LIMIT_PER_MINUTE`, and KV credentials (`KV_REST_API_URL`, `KV_REST_API_TOKEN`).
+- Optional controls for explanation route: `EXPLAIN_DISABLED`, `EXPLAIN_PROVIDER` (provider selector; currently only `"gemini"`), `GEMINI_EXPLAIN_MODEL`, `EXPLAIN_RATE_LIMIT_PER_MINUTE`, and KV credentials (`KV_REST_API_URL`, `KV_REST_API_TOKEN`).
+- Local debug pair `DEBUG_GEMINI_RAW` + `VITE_DEBUG_GEMINI_RAW` echoes raw Gemini text into API responses when both are set to `true`. **Never enable in production.**

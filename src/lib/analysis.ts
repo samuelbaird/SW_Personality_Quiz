@@ -1,5 +1,5 @@
-import type { PersonalityTraits, TraitKey } from '../types/quiz'
-import { clamp01, neutralTraits, normalize, TRAIT_KEYS } from './traits'
+import type { PersonalityTraits, TraitKey } from '../types/quiz.js'
+import { clamp01, neutralTraits, normalize, TRAIT_KEYS } from './traits.js'
 
 export interface AnsweredQuestion {
   /** IDs of traits this question primarily targets. Used for weighted scoring. */

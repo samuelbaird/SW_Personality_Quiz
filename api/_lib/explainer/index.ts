@@ -1,12 +1,12 @@
-import type { ExplainRequestPayload } from '../../../src/lib/explainPayload'
-import { geminiDebugAllowed } from '../debugGemini'
-import { callGemini } from '../gemini'
+import type { ExplainRequestPayload } from '../../../src/lib/explainPayload.js'
+import { geminiDebugAllowed } from '../debugGemini.js'
+import { callGemini } from '../gemini.js'
 import {
   EXPLAIN_RESPONSE_SCHEMA,
   EXPLAIN_SYSTEM_INSTRUCTION,
   buildExplainUserPrompt,
-} from '../explainPrompt'
-import { safeParseExplanationResponse } from '../validation'
+} from '../explainPrompt.js'
+import { safeParseExplanationResponse } from '../validation.js'
 
 export type ExplainerGenerateResult =
   | { ok: true; explanation: string; geminiRaw?: string }
